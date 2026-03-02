@@ -85,7 +85,7 @@ import { ethers, BigNumber } from 'ethers'
 import { useWalletStore } from '../stores/wallet'
 import WalletConnect from '@/components/WalletConnect.vue'
 
-import ChainstackDollars from '@/artifacts/contracts/OriginToken.sol/ChainstackDollars.json'
+import ChainstackDollars from '../artifacts/contracts/OriginToken.sol/ChainstackDollars.json'
 
 export default defineComponent({
   components: { WalletConnect },
@@ -94,10 +94,11 @@ export default defineComponent({
     const bridgedOk = ref<boolean>(false)
 
     const walletStore = useWalletStore()
-    const amount = ref<String>('')
-    const walletBalance = ref<Number>(0)
+    const amount = ref<string>('')
+    const walletBalance = ref<number>(0)
+    const ETH = 'ETH'
 
-    const originTokenAddress = import.meta.env.VITE_ORIGIN_TOKEN_ADDRESS
+    const originTokenAddress = import.meta.env.VITE_ORIGIN_TOKEN_ADDRESS as string
 
     const originNetwork = import.meta.env.VITE_ORIGIN_NETWORK_NAME
     const originNetworkId = import.meta.env.VITE_ORIGIN_NETWORK_ID
@@ -105,7 +106,7 @@ export default defineComponent({
 
     const bridgeWallet = import.meta.env.VITE_BRIDGE_WALLET
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum)
+    const provider = new ethers.providers.Web3Provider((window as any).ethereum)
     // get the account that will pay for the trasaction
     const signer = provider.getSigner()
 
@@ -161,6 +162,7 @@ export default defineComponent({
       originNetworkId,
       destinationNetwork,
       bridgedOk,
+      ETH,
     }
   },
 

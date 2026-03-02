@@ -80,8 +80,8 @@ export default defineComponent({
     // checks if current chain matches with the one provided in env variable
     const checkNetwork = async () => {
       console.log(`Target network is ${props.targetNetworkId}`)
-      if (window.ethereum) {
-        const currentChainId = await window.ethereum.request({
+      if ((window as any).ethereum) {
+        const currentChainId = await (window as any).ethereum.request({
           method: 'eth_chainId',
         })
         console.log('Current network  :>> ', currentChainId)
@@ -95,7 +95,7 @@ export default defineComponent({
     }
 
     const addNetwork = async () => {
-      await window.ethereum.request({
+      await (window as any).ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [
           {
@@ -115,7 +115,7 @@ export default defineComponent({
     }
     // switches network to the one provided in env variable
     const switchNetwork = async () => {
-      await window.ethereum.request({
+      await (window as any).ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: props.targetNetworkId }],
       })
@@ -126,8 +126,7 @@ export default defineComponent({
     const connectWallet = async () => {
       if (!network_ok.value) await switchNetwork()
       try {
-        // @ts-expect-error Window.ethereum not typed
-        const data = await window.ethereum.request({
+        const data = await (window as any).ethereum.request({
           method: 'eth_requestAccounts',
         })
         console.log('data :>> ', data)

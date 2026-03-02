@@ -1,6 +1,4 @@
 const Web3 = require('web3')
-
-//load env file
 require('dotenv').config()
 
 const {
@@ -106,72 +104,71 @@ const handleDestinationEvent = async (
   }
 }
 
+const getProvider = (url, name) => {
+  const provider = new Web3.providers.WebsocketProvider(url, {
+    reconnect: {
+      auto: true,
+      delay: 5000, // Wait 5s before reconnecting
+      maxAttempts: 20,
+      onTimeout: false
+    },
+    clientConfig: {
+      keepalive: true,
+      keepaliveInterval: 30000 // Send pings every 30s to prevent 1006 idle drops
+    }
+  });
+
+  provider.on('connect', () => console.log(`✅ Connected to ${name} WSS`));
+  provider.on('error', e => console.error(`❌ ${name} WS Error`, e));
+  provider.on('end', e => console.error(`⚠️ ${name} WS Closed. Reconnecting...`, e));
+
+  return provider;
+};
+
 const main = async () => {
-  const originWebSockerProvider = new Web3(process.env.ORIGIN_WSS_ENDPOINT)
-  const destinationWebSockerProvider = new Web3(
-    process.env.DESTINATION_WSS_ENDPOINT
-  )
-  // adds account to sign transactions
-  originWebSockerProvider.eth.accounts.wallet.add(BRIDGE_WALLET_KEY)
-  destinationWebSockerProvider.eth.accounts.wallet.add(BRIDGE_WALLET_KEY)
+  // Initialize Providers with the new helper
+  const originProvider = getProvider(process.env.ORIGIN_WSS_ENDPOINT, 'Sepolia');
+  const destProvider = getProvider(process.env.DESTINATION_WSS_ENDPOINT, 'Harmony');
 
-  const oriNetworkId = await originWebSockerProvider.eth.net.getId()
-  const destNetworkId = await destinationWebSockerProvider.eth.net.getId()
+  const web3Origin = new Web3(originProvider);
+  const web3Dest = new Web3(destProvider);
 
-  console.log('oriNetworkId :>> ', oriNetworkId)
-  console.log('destNetworkId :>> ', destNetworkId)
+  // Add accounts
+  web3Origin.eth.accounts.wallet.add(BRIDGE_WALLET_KEY);
+  web3Dest.eth.accounts.wallet.add(BRIDGE_WALLET_KEY);
 
-  const originTokenContract = new originWebSockerProvider.eth.Contract(
+  const originTokenContract = new web3Origin.eth.Contract(
     CHSD_ABIJSON.abi,
     ORIGIN_TOKEN_CONTRACT_ADDRESS
-  )
+  );
 
-  const destinationTokenContract =
-    new destinationWebSockerProvider.eth.Contract(
-      QCHSD_ABIJSON.abi,
-      DESTINATION_TOKEN_CONTRACT_ADDRESS
-    )
+  const destinationTokenContract = new web3Dest.eth.Contract(
+    QCHSD_ABIJSON.abi,
+    DESTINATION_TOKEN_CONTRACT_ADDRESS
+  );
 
-  let options = {
-    // filter: {
-    //   value: ['1000', '1337'], //Only get events where transfer value was 1000 or 1337
-    // },
-    // fromBlock: 0, //Number || "earliest" || "pending" || "latest"
-    // toBlock: 'latest',
-  }
-
-  originTokenContract.events
-    .Transfer(options)
+  // START LISTENERS
+  originTokenContract.events.Transfer()
     .on('data', async (event) => {
-      await handleEthEvent(
-        event,
-        destinationWebSockerProvider,
-        destinationTokenContract
-      )
+      // Logic: Pass web3Dest to handle transaction on destination
+      await handleEthEvent(event, web3Dest, destinationTokenContract);
     })
-    .on('error', (err) => {
-      console.error('Error: ', err)
-    })
-  console.log(`Waiting for Transfer events on ${ORIGIN_TOKEN_CONTRACT_ADDRESS}`)
+    .on('error', (err) => console.error('Origin Event Error:', err));
 
-  destinationTokenContract.events
-    .Transfer(options)
+  destinationTokenContract.events.Transfer()
     .on('data', async (event) => {
+      // Logic: Pass both to handle bridge back
       await handleDestinationEvent(
         event,
-        originWebSockerProvider,
+        web3Origin,
         originTokenContract,
-        destinationWebSockerProvider,
+        web3Dest,
         destinationTokenContract
-      )
+      );
     })
-    .on('error', (err) => {
-      console.error('Error: ', err)
-    })
+    .on('error', (err) => console.error('Dest Event Error:', err));
 
-  console.log(
-    `Waiting for Transfer events on ${DESTINATION_TOKEN_CONTRACT_ADDRESS}`
-  )
+  console.log("🚀 Bridge backend is active and listening...");
 }
 
-main()
+main();

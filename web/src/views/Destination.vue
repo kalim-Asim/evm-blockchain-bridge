@@ -12,8 +12,8 @@
       class="my-4"
       :targetNetwork="destinationNetwork"
       :targetNetworkId="destinationNetworkId"
-      :currency="ONE"
-      :decimals="4"
+      currency="ONE"
+      :decimals="18"
       :isNewNetwork="true"
     />
 
@@ -77,9 +77,8 @@ import { ethers, BigNumber } from 'ethers'
 
 import { useWalletStore } from '../stores/wallet'
 import WalletConnect from '@/components/WalletConnect.vue'
-
-import DChainstackDollars from '@/artifacts/contracts/DestinationToken.sol/DChainstackDollars.json'
-import ChainstackDollars from '@/artifacts/contracts/OriginToken.sol/ChainstackDollars.json'
+import DChainstackDollars from '../artifacts/contracts/DestinationToken.sol/DChainstackDollars.json'
+import ChainstackDollars from '../artifacts/contracts/OriginToken.sol/ChainstackDollars.json'
 
 export default defineComponent({
   components: { WalletConnect },
@@ -87,12 +86,13 @@ export default defineComponent({
     const trxInProgress = ref<boolean>(false)
 
     const walletStore = useWalletStore()
-    const amount = ref<String>('')
+    const amount = ref<string>('')
     const walletBalance = ref<Number>(0)
-    const originTokenAddress = import.meta.env.VITE_ORIGIN_TOKEN_ADDRESS
+    const ONE = 1
+    const originTokenAddress = import.meta.env.VITE_ORIGIN_TOKEN_ADDRESS as string
 
     const destinationTokenAddress = import.meta.env
-      .VITE_DESTINATION_TOKEN_ADDRESS
+      .VITE_DESTINATION_TOKEN_ADDRESS as string
 
     const originNetwork = import.meta.env.VITE_ORIGIN_NETWORK_NAME
     const destinationNetwork = import.meta.env.VITE_DESTINATION_NETWORK_NAME
@@ -100,7 +100,7 @@ export default defineComponent({
 
     const bridgeWallet = import.meta.env.VITE_BRIDGE_WALLET
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum)
+    const provider = new ethers.providers.Web3Provider((window as any).ethereum)
     // get the account that will pay for the trasaction
     const signer = provider.getSigner()
 
@@ -117,18 +117,31 @@ export default defineComponent({
     )
 
     const checkBalance = async function () {
-      // if (walletStore.address) {
+      if (!walletStore.address) return; // Guard clause
+      
       try {
-        console.log('checking balane')
-        console.log('walletStore.address :>> ', walletStore.address)
-        let balance = await contract.balanceOf(walletStore.address)
-        balance = ethers.utils.formatUnits(balance, 18)
-        console.log('balance :>> ', balance)
-        walletBalance.value = balance
+        // 1. Re-initialize provider and contract to catch network changes
+        const currentProvider = new ethers.providers.Web3Provider((window as any).ethereum);
+        const currentContract = new ethers.Contract(
+          destinationTokenAddress,
+          DChainstackDollars.abi,
+          currentProvider // Use provider for read-only calls
+        );
+
+        console.log('Checking balance for:', walletStore.address);
+        
+        // 2. This fetches D-CHSD Token balance
+        let balance = await currentContract.balanceOf(walletStore.address);
+        
+        // 3. (Optional) If you want to see your native ONE balance for debugging:
+        // let nativeBal = await currentProvider.getBalance(walletStore.address);
+        // console.log('Native ONE Balance:', ethers.utils.formatEther(nativeBal));
+
+        (walletBalance as any).value = ethers.utils.formatUnits(balance, 18);
+        console.log('D-CHSD Balance:', walletBalance.value);
       } catch (error) {
-        console.error('Error checking balance', error)
+        console.error('Error checking balance', error);
       }
-      // }
     }
 
     const sendTokens = async function () {
@@ -136,10 +149,8 @@ export default defineComponent({
       console.log('amountFormatted :>> ', amountFormatted)
       console.log('amountFormatted.toString() :>> ', amountFormatted.toString())
 
-      //@ts-expect-error Window.ethers not TS
-      if (typeof window.ethereum !== 'undefined') {
+      if (typeof (window as any).ethereum !== 'undefined') {
         trxInProgress.value = true
-        //@ts-expect-error Window.ethers not TS
         // const provider = new ethers.providers.Web3Provider(window.ethereum)
         // get the account that will pay for the trasaction
         // const signer = provider.getSigner()
@@ -160,7 +171,7 @@ export default defineComponent({
           console.log('transaction :>> ', transaction)
           // wait for the transaction to actually settle in the blockchain
           await transaction.wait()
-          amount.value = 0
+          amount.value = ''
           trxInProgress.value = false
         } catch (error) {
           console.error(error)
@@ -179,6 +190,7 @@ export default defineComponent({
       originNetwork,
       destinationNetworkId,
       destinationNetwork,
+      ONE,
     }
   },
 
