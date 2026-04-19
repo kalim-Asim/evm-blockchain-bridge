@@ -5,7 +5,7 @@
     </h1>
 
     <p>
-      This bridge allows you to send ChainstackDollars (D-CHSD) from {{destinationNetwork}} back to {{originNetwork}}
+      This bridge allows you to send AKADollars (D-CHSD) from {{destinationNetwork}} back to {{originNetwork}}
     </p>
 
     <WalletConnect
@@ -44,11 +44,26 @@
           </span>
         </div>
       </div>
-      <p class="text-xs mt-1">Your balance is: {{ walletBalance }}</p>
+      <p class="text-xs mt-1">Your balance is: {{ walletBalance }} D-CHSD</p>
+
+      <p
+        v-if="errorMessage"
+        class="px-4 py-2 bg-red-100 text-red-600 border border-red-600 rounded-lg w-auto mx-auto my-4 text-sm"
+      >
+        {{ errorMessage }}
+      </p>
+
+      <p
+        v-if="walletStore.address && Number(walletBalance) === 0 && !errorMessage"
+        class="px-4 py-2 bg-yellow-100 text-yellow-700 border border-yellow-500 rounded-lg w-auto mx-auto my-4 text-sm"
+      >
+        Your D-CHSD balance is 0. If you recently bridged CHSD from {{ originNetwork }}, please wait a few minutes for the bridge backend to process your transaction, then refresh this page.
+      </p>
 
       <button
         type="button"
-        class="inline-flex items-center px-4 py-2 mt-4 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        class="inline-flex items-center px-4 py-2 mt-4 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="trxInProgress || Number(walletBalance) <= 0"
         @click="sendTokens"
       >
         <svg
@@ -77,13 +92,14 @@ import { ethers, BigNumber } from 'ethers'
 
 import { useWalletStore } from '../stores/wallet'
 import WalletConnect from '@/components/WalletConnect.vue'
-import DChainstackDollars from '../artifacts/contracts/DestinationToken.sol/DChainstackDollars.json'
-import ChainstackDollars from '../artifacts/contracts/OriginToken.sol/ChainstackDollars.json'
+import DAKADollars from '../artifacts/contracts/DestinationToken.sol/DAKADollars.json'
+import AKADollars from '../artifacts/contracts/OriginToken.sol/AKADollars.json'
 
 export default defineComponent({
   components: { WalletConnect },
   setup() {
     const trxInProgress = ref<boolean>(false)
+    const errorMessage = ref<string>('')
 
     const walletStore = useWalletStore()
     const amount = ref<string>('')
@@ -100,70 +116,98 @@ export default defineComponent({
 
     const bridgeWallet = import.meta.env.VITE_BRIDGE_WALLET
 
-    const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-    // get the account that will pay for the trasaction
-    const signer = provider.getSigner()
+    /** Helper: returns true only when MetaMask is on the destination chain */
+    const isOnCorrectNetwork = async (): Promise<boolean> => {
+      if (!(window as any).ethereum) return false
+      const currentChainId = await (window as any).ethereum.request({
+        method: 'eth_chainId',
+      })
+      return currentChainId === destinationNetworkId
+    }
 
-    let contract = new ethers.Contract(
-      destinationTokenAddress,
-      DChainstackDollars.abi,
-      signer
-    )
-
-    let ethContract = new ethers.Contract(
-      originTokenAddress,
-      ChainstackDollars.abi,
-      signer
-    )
+    /** Helper: returns a fresh provider + signer bound to the current MetaMask state */
+    const getFreshProviderAndSigner = () => {
+      const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+      const signer = provider.getSigner()
+      return { provider, signer }
+    }
 
     const checkBalance = async function () {
-      if (!walletStore.address) return; // Guard clause
-      
+      if (!walletStore.address) return
+      errorMessage.value = ''
+
       try {
-        // 1. Re-initialize provider and contract to catch network changes
-        const currentProvider = new ethers.providers.Web3Provider((window as any).ethereum);
+        // Verify we're on the Harmony destination network before querying
+        const onCorrectNetwork = await isOnCorrectNetwork()
+        if (!onCorrectNetwork) {
+          console.log('Not on destination network yet, skipping balance check')
+          return
+        }
+
+        const { provider } = getFreshProviderAndSigner()
         const currentContract = new ethers.Contract(
           destinationTokenAddress,
-          DChainstackDollars.abi,
-          currentProvider // Use provider for read-only calls
-        );
+          DAKADollars.abi,
+          provider
+        )
 
-        console.log('Checking balance for:', walletStore.address);
-        
-        // 2. This fetches D-CHSD Token balance
-        let balance = await currentContract.balanceOf(walletStore.address);
-        
-        // 3. (Optional) If you want to see your native ONE balance for debugging:
-        // let nativeBal = await currentProvider.getBalance(walletStore.address);
-        // console.log('Native ONE Balance:', ethers.utils.formatEther(nativeBal));
+        console.log('Checking D-CHSD balance for:', walletStore.address)
+        console.log('On destination contract:', destinationTokenAddress)
 
-        (walletBalance as any).value = ethers.utils.formatUnits(balance, 18);
-        console.log('D-CHSD Balance:', walletBalance.value);
+        let balance = await currentContract.balanceOf(walletStore.address)
+        ;(walletBalance as any).value = ethers.utils.formatUnits(balance, 18)
+        console.log('D-CHSD Balance:', walletBalance.value)
       } catch (error) {
-        console.error('Error checking balance', error);
+        console.error('Error checking balance', error)
+        errorMessage.value = 'Could not fetch your D-CHSD balance. Make sure you are connected to ' + destinationNetwork + '.'
       }
     }
 
     const sendTokens = async function () {
+      errorMessage.value = ''
+
+      // Validate amount
+      if (!amount.value || Number(amount.value) <= 0) {
+        errorMessage.value = 'Please enter a valid amount.'
+        return
+      }
+
+      // Validate balance
+      if (Number(amount.value) > Number(walletBalance.value)) {
+        errorMessage.value = `Insufficient D-CHSD balance. You have ${walletBalance.value} but tried to send ${amount.value}.`
+        return
+      }
+
+      // Check that user is not sending to their own address (bridge wallet misconfiguration)
+      if (walletStore.address.toLowerCase() === (bridgeWallet as any).toLowerCase()) {
+        errorMessage.value = 'Your wallet address is the same as the bridge wallet. Please use a different wallet address.'
+        return
+      }
+
       const amountFormatted = ethers.utils.parseUnits(amount.value, 18)
       console.log('amountFormatted :>> ', amountFormatted)
       console.log('amountFormatted.toString() :>> ', amountFormatted.toString())
 
       if (typeof (window as any).ethereum !== 'undefined') {
+        // Verify network before sending
+        const onCorrectNetwork = await isOnCorrectNetwork()
+        if (!onCorrectNetwork) {
+          errorMessage.value = 'Please switch to ' + destinationNetwork + ' before sending.'
+          return
+        }
+
         trxInProgress.value = true
-        // const provider = new ethers.providers.Web3Provider(window.ethereum)
-        // get the account that will pay for the trasaction
-        // const signer = provider.getSigner()
-        // as the operation we're going to do is a transaction,
-        // we pass the signer instead of the provider
-        // const contract = new ethers.Contract(
-        //   contractAddress,
-        //   ChainstackDollars.abi,
-        //   signer
-        // )
 
         try {
-          const transaction = await contract.transfer(
+          // Re-create provider/signer/contract to ensure we're on the right network
+          const { signer } = getFreshProviderAndSigner()
+          const freshContract = new ethers.Contract(
+            destinationTokenAddress,
+            DAKADollars.abi,
+            signer
+          )
+
+          const transaction = await freshContract.transfer(
             bridgeWallet,
             amountFormatted.toString()
           )
@@ -173,9 +217,20 @@ export default defineComponent({
           await transaction.wait()
           amount.value = ''
           trxInProgress.value = false
-        } catch (error) {
+          // Refresh balance after successful transfer
+          await checkBalance()
+        } catch (error: any) {
           console.error(error)
           trxInProgress.value = false
+          // Parse common ERC20 revert reasons for user-friendly messages
+          const reason = error?.data?.message || error?.message || ''
+          if (reason.includes('transfer amount exceeds balance')) {
+            errorMessage.value = 'Transfer failed: you do not have enough D-CHSD tokens. Bridge CHSD from ' + originNetwork + ' first.'
+          } else if (reason.includes('user rejected')) {
+            errorMessage.value = 'Transaction was rejected in your wallet.'
+          } else {
+            errorMessage.value = 'Transaction failed. Please check the console for details.'
+          }
         }
       }
     }
@@ -183,6 +238,7 @@ export default defineComponent({
     return {
       walletStore,
       trxInProgress,
+      errorMessage,
       amount,
       walletBalance,
       sendTokens,
@@ -194,7 +250,14 @@ export default defineComponent({
     }
   },
 
-  mounted() {},
+  async mounted() {
+    // If wallet was already connected (e.g. navigating from Origin page),
+    // the watcher won't fire because the address hasn't changed.
+    // Only check balance if we're on the correct network already.
+    if (useWalletStore().address) {
+      await this.checkBalance()
+    }
+  },
 
   computed: {
     accAvailable() {

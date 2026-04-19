@@ -1,6 +1,4 @@
 <script lang="ts">
-// This starter template is using Vue 3 <script setup> SFCs
-// Check out https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup
 import { defineComponent } from 'vue'
 import NavBar from '@/components/Navbar.vue'
 import Nav from '@/components/Nav.vue'
@@ -16,11 +14,10 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="flex flex-col h-screen justify-between">
+  <div class="flex flex-col min-h-screen">
     <NavBar />
+    <router-view class="container max-w-8xl mx-auto flex-1 px-4" />
     <Nav />
-    <router-view class="container max-w-8xl mx-auto mb-auto px-4" />
-    <Footer />
   </div>
 </template>
 

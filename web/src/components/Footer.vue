@@ -47,13 +47,13 @@
         <p class="text-center md:text-left text-base text-gray-400">
           &copy; 2022 Created by A.Ufano for
           <a class="hover:underline" href="https://chainstack.com"
-            >Chainstack</a
+            >AKA</a
           >
         </p>
         <p class="text-center md:text-left text-base text-gray-400">
           Visit
           <a class="hover:underline" href="https://chainstack.com"
-            >Chainstack.com</a
+            >AKA.com</a
           >
         </p>
       </div>

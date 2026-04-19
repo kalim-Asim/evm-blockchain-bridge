@@ -36,6 +36,7 @@ const mintTokens = async (provider, contract, amount, address) => {
     console.log(
       `mintTokens > You can see this transaction in ${process.env.DESTINATION_EXPLORER}${receipt.transactionHash}`
     )
+    return true
   } catch (error) {
     console.error('Error in mintTokens >', error)
     return false

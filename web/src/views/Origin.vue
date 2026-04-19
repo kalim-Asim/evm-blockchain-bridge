@@ -5,7 +5,7 @@
     </h1>
 
     <p>
-      This bridge allows you to send ChainstackDollars (D-CHSD) from {{originNetwork}} to {{destinationNetwork}}
+      This bridge allows you to send AKADollars (D-CHSD) from {{originNetwork}} to {{destinationNetwork}}
     </p>
 
     <WalletConnect
@@ -85,7 +85,7 @@ import { ethers, BigNumber } from 'ethers'
 import { useWalletStore } from '../stores/wallet'
 import WalletConnect from '@/components/WalletConnect.vue'
 
-import ChainstackDollars from '../artifacts/contracts/OriginToken.sol/ChainstackDollars.json'
+import AKADollars from '../artifacts/contracts/OriginToken.sol/AKADollars.json'
 
 export default defineComponent({
   components: { WalletConnect },
@@ -106,48 +106,45 @@ export default defineComponent({
 
     const bridgeWallet = import.meta.env.VITE_BRIDGE_WALLET
 
-    const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-    // get the account that will pay for the trasaction
-    const signer = provider.getSigner()
-
-    let contract = new ethers.Contract(
-      originTokenAddress,
-      ChainstackDollars.abi,
-      signer
-    )
+    const getContract = () => {
+      const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+      const signer = provider.getSigner()
+      return new ethers.Contract(originTokenAddress, AKADollars.abi, signer)
+    }
 
     const checkBalance = async function () {
-      // if (walletStore.address) {
-      let balance = await contract.balanceOf(walletStore.address)
-      balance = ethers.utils.formatUnits(balance, 18)
-      console.log('balance :>> ', balance)
-      walletBalance.value = balance
-      // }
+      if (!(window as any).ethereum || !walletStore.address) return
+      try {
+        const contract = getContract()
+        let balance = await contract.balanceOf(walletStore.address)
+        balance = ethers.utils.formatUnits(balance, 18)
+        console.log('balance :>> ', balance)
+        walletBalance.value = balance
+      } catch (error) {
+        console.error('Error checking balance', error)
+      }
     }
 
     const sendTokens = async function () {
+      if (typeof (window as any).ethereum === 'undefined') return
       const amountFormatted = ethers.utils.parseUnits(amount.value, 18)
+      trxInProgress.value = true
 
-      //@ts-expect-error Window.ethers not TS
-      if (typeof window.ethereum !== 'undefined') {
-        trxInProgress.value = true
+      try {
+        const contract = getContract()
+        const transaction = await contract.transfer(
+          bridgeWallet,
+          amountFormatted.toString()
+        )
 
-        try {
-          const transaction = await contract.transfer(
-            bridgeWallet,
-            amountFormatted.toString()
-          )
-
-          console.log('transaction :>> ', transaction)
-          // wait for the transaction to actually settle in the blockchain
-          await transaction.wait()
-          bridgedOk.value = true
-          amount.value = ''
-          trxInProgress.value = false
-        } catch (error) {
-          console.error(error)
-          trxInProgress.value = false
-        }
+        console.log('transaction :>> ', transaction)
+        await transaction.wait()
+        bridgedOk.value = true
+        amount.value = ''
+        trxInProgress.value = false
+      } catch (error) {
+        console.error(error)
+        trxInProgress.value = false
       }
     }
 
@@ -166,7 +163,14 @@ export default defineComponent({
     }
   },
 
-  mounted() {},
+  async mounted() {
+    // If wallet was already connected (e.g. navigating back from Destination page),
+    // the watcher won't fire because the address hasn't changed.
+    // So we need to check the balance immediately on mount.
+    if (useWalletStore().address) {
+      await this.checkBalance()
+    }
+  },
 
   computed: {
     accAvailable() {
