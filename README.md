@@ -69,10 +69,13 @@ evm-blockchain-bridge/
 │       └── components/
 │           └── WalletConnect.vue
 │
-└── ml/                         # Anomaly Detection
-    ├── generate_dataset.py     # Synthetic dataset generator
+└── ml/                             # Anomaly Detection
+    ├── generate_dataset.py         # Synthetic dataset generator
     ├── bridge_anomaly_dataset.csv  # Generated training data (3000 rows)
-    └── idea.md
+    ├── train_svm.py                # SVM training, evaluation & model export
+    ├── bridge_svm_model.pkl        # Trained SVM classifier (ready for inference)
+    ├── bridge_scaler.pkl           # Fitted StandardScaler (required at inference)
+    └── DATASET.md                  # Feature definitions & generation logic
 ```
 
 ---
@@ -149,7 +152,33 @@ Since the bridge prototype has minimal real traffic, the training dataset is **s
 
 Normal traffic follows realistic hourly baselines (peak at midday, quiet at 4am). Each attack type reproduces the statistical fingerprint of real-world bridge exploits.
 
-See [`ml/generate_dataset.py`](ml/generate_dataset.py) for full generation logic.
+See [`ml/generate_dataset.py`](ml/generate_dataset.py) for full generation logic and [`ml/DATASET.md`](ml/DATASET.md) for complete feature documentation.
+
+### Model Training Results
+
+The SVM was trained on the 3000-row synthetic dataset using an RBF kernel (`C=10`, `gamma='scale'`).
+
+| Metric | Score |
+|---|---|
+| Accuracy | 100% |
+| ROC-AUC | 1.0000 |
+| False Positives (false alarms) | 0 |
+| False Negatives (missed attacks) | 0 |
+| 5-fold Cross-Validation | 1.0000 ± 0.0000 |
+
+> The perfect score is expected — the synthetic data has clearly separated statistical distributions by design. Performance on real-world traffic would be lower, which is acceptable for a prototype.
+
+The trained model and scaler are saved as `.pkl` files in `ml/` and are ready for integration into the bridge backend.
+
+### Training the Model
+
+```bash
+cd ml
+pip install numpy pandas scikit-learn scipy
+python3 train_svm.py
+```
+
+This will print full evaluation metrics, a confusion matrix, and smoke-test predictions, then save `bridge_svm_model.pkl` and `bridge_scaler.pkl`.
 
 ---
 
@@ -266,13 +295,19 @@ This scans the last 5000 blocks on Sepolia, finds unprocessed bridge transfers, 
 
 ---
 
-## Generating the Anomaly Dataset
+## Anomaly Detection — Quick Reference
 
+**Generate dataset:**
 ```bash
 cd ml && python3 generate_dataset.py
+# Output: bridge_anomaly_dataset.csv — 3000 rows, 14 features, binary label
 ```
 
-Output: `bridge_anomaly_dataset.csv` — 3000 rows, 14 features, binary label.
+**Train model:**
+```bash
+cd ml && python3 train_svm.py
+# Output: bridge_svm_model.pkl + bridge_scaler.pkl
+```
 
 ---
 
