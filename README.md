@@ -55,7 +55,8 @@ evm-blockchain-bridge/
 │   └── test/
 │
 ├── backend/                    # Bridge backend (Node.js)
-│   ├── event-watcher.js        # Watches both chains, triggers mint/burn
+│   ├── event-watcher.js        # Watches both chains, triggers mint/burn + anomaly detection
+│   ├── anomaly-detector.js     # 60s window feature extractor + SVM inference runner
 │   ├── contract-methods.js     # mint, burn, transfer helpers
 │   ├── recover-missed-events.js# Replays missed bridge transfers
 │   ├── AKADollars.json         # Origin contract ABI
@@ -73,6 +74,7 @@ evm-blockchain-bridge/
     ├── generate_dataset.py         # Synthetic dataset generator
     ├── bridge_anomaly_dataset.csv  # Generated training data (3000 rows)
     ├── train_svm.py                # SVM training, evaluation & model export
+    ├── infer.py                    # Inference script called by the backend at runtime
     ├── bridge_svm_model.pkl        # Trained SVM classifier (ready for inference)
     ├── bridge_scaler.pkl           # Fitted StandardScaler (required at inference)
     └── DATASET.md                  # Feature definitions & generation logic
@@ -168,7 +170,23 @@ The SVM was trained on the 3000-row synthetic dataset using an RBF kernel (`C=10
 
 > The perfect score is expected — the synthetic data has clearly separated statistical distributions by design. Performance on real-world traffic would be lower, which is acceptable for a prototype.
 
-The trained model and scaler are saved as `.pkl` files in `ml/` and are ready for integration into the bridge backend.
+The trained model and scaler are saved as `.pkl` files in `ml/` and are **integrated into the running backend**.
+
+### How it runs (live in the backend)
+
+`backend/anomaly-detector.js` plugs directly into `event-watcher.js`:
+
+1. Every incoming `Transfer` event on the Origin chain is recorded into the current window
+2. Every **60 seconds** the window is closed, 14 features are computed in Node.js, and `ml/infer.py` is spawned as a child process
+3. `infer.py` loads the `.pkl` files, scales the features, and returns a JSON prediction
+4. The backend logs the result:
+
+```
+✅ Normal traffic  confidence: 99.9%  | tx=12
+⚠️  ATTACK DETECTED  [ATTACK]  confidence: 100.0%  | tx=3200  unique_senders=2  same_pair_ratio=0.98
+```
+
+No extra process or configuration needed — the detector starts automatically when you run `node event-watcher.js`.
 
 ### Training the Model
 
@@ -178,7 +196,7 @@ pip install numpy pandas scikit-learn scipy
 python3 train_svm.py
 ```
 
-This will print full evaluation metrics, a confusion matrix, and smoke-test predictions, then save `bridge_svm_model.pkl` and `bridge_scaler.pkl`.
+This prints full evaluation metrics, a confusion matrix, and smoke-test predictions, then saves `bridge_svm_model.pkl` and `bridge_scaler.pkl`.
 
 ---
 
@@ -308,6 +326,14 @@ cd ml && python3 generate_dataset.py
 cd ml && python3 train_svm.py
 # Output: bridge_svm_model.pkl + bridge_scaler.pkl
 ```
+
+**Run inference manually (test the model):**
+```bash
+echo '{"features":[18,14,12,13,0.30,2,2.1,3.5,0.15,0.08,3.2,0.0,1.0,-2.0]}' | python3 ml/infer.py
+# {"prediction": 0, "label": "NORMAL", "confidence": 0.9997}
+```
+
+**Live detection:** starts automatically when you run `cd backend && node event-watcher.js` — no extra steps needed.
 
 ---
 
