@@ -13,6 +13,8 @@ const {
   transferToEthWallet,
 } = require('./contract-methods.js')
 
+const detector = require('./anomaly-detector')
+
 const ORIGIN_TOKEN_CONTRACT_ADDRESS = process.env.ORIGIN_TOKEN_CONTRACT_ADDRESS
 const DESTINATION_TOKEN_CONTRACT_ADDRESS =
   process.env.DESTINATION_TOKEN_CONTRACT_ADDRESS
@@ -30,6 +32,8 @@ const handleEthEvent = async (event, provider, contract) => {
   const eventId = `${event.transactionHash}-${event.logIndex}`
   if (processedEvents.has(eventId)) return
   processedEvents.add(eventId)
+
+  detector.record(event)
 
   console.log('handleEthEvent')
   const { from, to, value } = event.returnValues
@@ -389,6 +393,7 @@ const main = async () => {
     }
   }, 10000)
 
+  detector.start()
   console.log('🚀 Bridge backend is active and listening...')
 }
 
