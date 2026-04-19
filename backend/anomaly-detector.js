@@ -13,7 +13,7 @@
 const { spawn } = require('child_process')
 const path = require('path')
 
-const WINDOW_MS = 60_000
+const WINDOW_MS = parseInt(process.env.ANOMALY_WINDOW_MS) || 60_000
 const INFER_SCRIPT = path.join(__dirname, '..', 'ml', 'infer.py')
 
 // Hourly transaction baselines (hours 0–23): peak ~35 at noon, trough ~4 at 4am
