@@ -57,6 +57,7 @@ evm-blockchain-bridge/
 ├── backend/                    # Bridge backend (Node.js)
 │   ├── event-watcher.js        # Watches both chains, triggers mint/burn + anomaly detection
 │   ├── anomaly-detector.js     # 60s window feature extractor + SVM inference runner
+│   ├── simulate-attack.js      # Demo script: runs Normal → DDoS → Sybil simulation
 │   ├── contract-methods.js     # mint, burn, transfer helpers
 │   ├── recover-missed-events.js# Replays missed bridge transfers
 │   ├── AKADollars.json         # Origin contract ABI
@@ -334,6 +335,17 @@ echo '{"features":[18,14,12,13,0.30,2,2.1,3.5,0.15,0.08,3.2,0.0,1.0,-2.0]}' | py
 ```
 
 **Live detection:** starts automatically when you run `cd backend && node event-watcher.js` — no extra steps needed.
+
+**Demo simulation (no blockchain needed):**
+```bash
+cd backend && node simulate-attack.js
+```
+Runs three 20-second windows back-to-back and prints the classifier output:
+```
+✅ Normal traffic  confidence: 99.4%  | tx=12
+⚠️  ATTACK DETECTED  [ATTACK]  confidence: 100.0%  | tx=3200  unique_senders=1  same_pair_ratio=1.00
+⚠️  ATTACK DETECTED  [ATTACK]  confidence: 89.0%   | tx=300   unique_senders=300  same_pair_ratio=0.00
+```
 
 ---
 
