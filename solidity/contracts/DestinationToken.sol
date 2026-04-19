@@ -7,17 +7,17 @@ import "hardhat/console.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
-contract DChainstackDollars is ERC20, ERC20Burnable {
+contract DAKADollars is ERC20, ERC20Burnable {
     address bridge;
 
-    constructor(address _bridge) ERC20("DChainstackDollars", "D-CHSD") {
+    constructor(address _bridge) ERC20("DAKADollars", "D-CHSD") {
         bridge = _bridge;
     }
 
     modifier onlyBridge() {
         require(
             bridge == msg.sender,
-            "DChainstackDollars: only the bridge can trigger this method!"
+            "DAKADollars: only the bridge can trigger this method!"
         );
         _;
     }

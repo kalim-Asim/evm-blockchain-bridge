@@ -10,44 +10,44 @@ const {
   constants,
 } = require('@openzeppelin/test-helpers')
 
-let tokenFactory, chainstackDollarsContract, owner, user1, user2, user3
+let tokenFactory, AKADollarsContract, owner, user1, user2, user3
 
-const NAME = 'ChainstackDollars'
+const NAME = 'AKADollars'
 const SYMBOL = 'CHSD'
 const TOTAL_SUPPLY = '100'
 const TOTAL_SUPPLY_DECIMALS = '100000000000000000000'
 
 // Start test block
-describe('ChainstackDollars contract', function () {
+describe('AKADollars contract', function () {
   before(async function () {
-    tokenFactory = await ethers.getContractFactory('ChainstackDollars')
+    tokenFactory = await ethers.getContractFactory('AKADollars')
     ;[owner, user1, user2, user3] = await ethers.getSigners()
-    chainstackDollarsContract = await tokenFactory.deploy(
+    AKADollarsContract = await tokenFactory.deploy(
       NAME,
       SYMBOL,
       TOTAL_SUPPLY
     )
-    await chainstackDollarsContract.deployed()
+    await AKADollarsContract.deployed()
   })
 
   it('retrieve returns a value previously stored', async function () {
     // Use large integer comparisons
-    expect(await chainstackDollarsContract.totalSupply()).to.be.equal(
+    expect(await AKADollarsContract.totalSupply()).to.be.equal(
       ethers.BigNumber.from(TOTAL_SUPPLY_DECIMALS)
     )
   })
 
   it('has a name', async function () {
-    expect(await chainstackDollarsContract.name()).to.be.equal(NAME)
+    expect(await AKADollarsContract.name()).to.be.equal(NAME)
   })
 
   it('has a symbol', async function () {
-    expect(await chainstackDollarsContract.symbol()).to.be.equal(SYMBOL)
+    expect(await AKADollarsContract.symbol()).to.be.equal(SYMBOL)
   })
 
   it('assigns the initial total supply to the creator', async function () {
     expect(
-      await chainstackDollarsContract.balanceOf(owner.address)
+      await AKADollarsContract.balanceOf(owner.address)
     ).to.be.equal(ethers.BigNumber.from(TOTAL_SUPPLY_DECIMALS))
   })
 })

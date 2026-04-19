@@ -3,6 +3,23 @@ require('@nomiclabs/hardhat-waffle')
 //load env file
 require('dotenv').config()
 
+const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
+if (proxyUrl) {
+  const { HttpsProxyAgent } = require('https-proxy-agent')
+  const agent = new HttpsProxyAgent(proxyUrl)
+  const nodeFetch = require('node-fetch')
+  const originalFetch = nodeFetch.default || nodeFetch
+  const proxiedFetch = (url, opts = {}) => {
+    if (!opts.agent) opts = { ...opts, agent }
+    return originalFetch(url, opts)
+  }
+  const mod = require.cache[require.resolve('node-fetch')]
+  if (mod) {
+    if (mod.exports.default) mod.exports.default = proxiedFetch
+    else mod.exports = proxiedFetch
+  }
+}
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
