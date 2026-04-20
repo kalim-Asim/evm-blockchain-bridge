@@ -1,6 +1,6 @@
 What I Built — Simple Summary
 The Core Idea
-A real bridge dataset doesn't exist (your bridge has like 3 transactions). So I simulated what traffic would look like — both normal usage and attacks — based on the logic from your PDF.
+A real bridge dataset doesn't exist (our bridge has like 3 transactions). We simulated what traffic would look like — both normal usage and attacks.
 
 Each Row = One 60-Second Window
 The bridge is monitored every 60 seconds. Each row captures what happened in that window — how many transactions, how fast, from how many wallets, etc.
