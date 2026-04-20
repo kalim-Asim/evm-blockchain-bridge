@@ -137,18 +137,15 @@ export default defineComponent({
       errorMessage.value = ''
 
       try {
-        // Verify we're on the Harmony destination network before querying
-        const onCorrectNetwork = await isOnCorrectNetwork()
-        if (!onCorrectNetwork) {
-          console.log('Not on destination network yet, skipping balance check')
-          return
-        }
-
-        const { provider } = getFreshProviderAndSigner()
+        // Use a direct JsonRpcProvider to Harmony for balance reads.
+        // MetaMask's injected provider on Harmony testnet can return stale/zero
+        // balances — bypassing it gives a reliable read.
+        const rpcUrl = import.meta.env.VITE_DESTINATION_NETWORK_RPC as string
+        const readProvider = new ethers.providers.JsonRpcProvider(rpcUrl)
         const currentContract = new ethers.Contract(
           destinationTokenAddress,
           DAKADollars.abi,
-          provider
+          readProvider
         )
 
         console.log('Checking D-CHSD balance for:', walletStore.address)
@@ -207,9 +204,11 @@ export default defineComponent({
             signer
           )
 
+          const gasPrice = await signer.getGasPrice()
           const transaction = await freshContract.transfer(
             bridgeWallet,
-            amountFormatted.toString()
+            amountFormatted.toString(),
+            { type: 0, gasPrice }   // Harmony Testnet doesn't support EIP-1559 (type-2)
           )
 
           console.log('transaction :>> ', transaction)
