@@ -1,80 +1,110 @@
 <template>
-  <div class="text-center pt-12">
-    <h1 class="text-2xl font-bold mb-8">
-      Bridge from {{originNetwork}} to {{destinationNetwork}}
-    </h1>
+  <div class="py-12 px-4">
+    <div class="max-w-md mx-auto">
 
-    <p>
-      This bridge allows you to send AKADollars (D-CHSD) from {{originNetwork}} to {{destinationNetwork}}
-    </p>
+      <!-- Bridge card -->
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
 
-    <WalletConnect
-      class="my-4"
-      :targetNetwork="originNetwork"
-      :targetNetworkId="originNetworkId"
-      :currency="ETH"
-      :decimals="18"
-    />
-
-    <form class="w-96 mt-8 mx-auto">
-      <label for="price" class="block mb-2 font-medium text-gray-700"
-        >How much CHSD do you want to bridge?</label
-      >
-      <div class="mt-4 w-2/3 mx-auto relative rounded-md shadow-sm">
-        <div
-          class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-        >
-          <span class="text-gray-500 sm:text-sm"> $ </span>
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-slate-100">
+          <h1 class="text-lg font-semibold text-slate-900">Bridge Tokens</h1>
+          <p class="text-sm text-slate-500 mt-0.5">
+            Send CHSD from {{ originNetwork }} to {{ destinationNetwork }}
+          </p>
         </div>
-        <input
-          type="text"
-          v-model="amount"
-          name="price"
-          id="price"
-          class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md"
-          placeholder="0.00"
-          aria-describedby="price-currency"
-        />
-        <div
-          class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
-        >
-          <span class="text-gray-500 sm:text-sm" id="price-currency">
-            CHSD
-          </span>
-        </div>
-      </div>
-      <p class="text-xs mt-1">Your balance is: {{ walletBalance }}</p>
 
-      <button
-        type="button"
-        class="inline-flex items-center px-4 py-2 mt-4 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        @click="sendTokens"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="m-ml-1 mr-3 h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+        <!-- Network route -->
+        <div class="px-6 pt-5 pb-4 flex items-center gap-3">
+          <div class="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+            <p class="text-xs text-slate-400 mb-1 uppercase tracking-wide">From</p>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
+              <span class="text-sm font-medium text-slate-800">{{ originNetwork }}</span>
+            </div>
+          </div>
+
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+
+          <div class="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+            <p class="text-xs text-slate-400 mb-1 uppercase tracking-wide">To</p>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0"></span>
+              <span class="text-sm font-medium text-slate-800">{{ destinationNetwork }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Wallet -->
+        <div class="px-6 pb-5">
+          <WalletConnect
+            :targetNetwork="originNetwork"
+            :targetNetworkId="originNetworkId"
+            :currency="ETH"
+            :decimals="18"
           />
-        </svg>
-        {{
-          trxInProgress ? `Processing...` : `Bridge to ${destinationNetwork}`
-        }}
-      </button>
-    </form>
-    <p
-      v-if="bridgedOk"
-      class="px-4 py-2 bg-blue-100 text-blue-600 border border-blue-600 rounded-lg w-2/5 mx-auto my-8"
-    >
-      Tokens sent to {{ destinationNetwork }}
-    </p>
+        </div>
+
+        <!-- Divider -->
+        <div class="border-t border-slate-100 mx-6"></div>
+
+        <!-- Amount -->
+        <div class="px-6 py-5">
+          <label class="block text-sm font-medium text-slate-700 mb-2">Amount</label>
+          <div class="relative">
+            <input
+              type="text"
+              v-model="amount"
+              id="price"
+              placeholder="0.00"
+              class="w-full px-4 py-3 pr-20 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-300 text-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+            />
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 select-none">CHSD</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">
+            Balance:
+            <span class="text-slate-600 font-medium">{{ walletBalance }} CHSD</span>
+          </p>
+        </div>
+
+        <!-- Action -->
+        <div class="px-6 pb-6">
+          <button
+            type="button"
+            @click="sendTokens"
+            class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+            :disabled="trxInProgress"
+          >
+            <svg v-if="trxInProgress" class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span>{{ trxInProgress ? 'Processing…' : `Bridge to ${destinationNetwork}` }}</span>
+            <svg v-if="!trxInProgress" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Success -->
+        <div v-if="bridgedOk" class="mx-6 mb-6 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <p class="text-sm text-emerald-700 font-medium">
+            Tokens bridged to {{ destinationNetwork }} successfully.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Helper note -->
+      <p class="text-center text-xs text-slate-400 mt-4">
+        Bridged tokens typically arrive within 30–60 seconds.
+      </p>
+
+    </div>
   </div>
 </template>
 

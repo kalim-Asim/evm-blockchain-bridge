@@ -11,8 +11,13 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/bridge-back',
     name: 'Destination',
-
     component: () => import('../views/Destination.vue'),
+  },
+
+  {
+    path: '/security',
+    name: 'Security',
+    component: () => import('../views/SecurityMonitor.vue'),
   },
 
   // TODO: for 404 errors

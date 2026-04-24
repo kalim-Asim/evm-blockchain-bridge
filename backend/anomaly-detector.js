@@ -12,7 +12,9 @@
 
 const { spawn } = require('child_process')
 const path = require('path')
+const EventEmitter = require('events')
 
+const _emitter = new EventEmitter()
 const WINDOW_MS = parseInt(process.env.ANOMALY_WINDOW_MS) || 60_000
 const INFER_SCRIPT = path.join(__dirname, '..', 'ml', 'infer.py')
 
@@ -145,6 +147,19 @@ const _classify = async () => {
       console.error('[Anomaly] Inference error:', result.error)
       return
     }
+
+    const alert = {
+      prediction: result.prediction,
+      label: result.label,
+      confidence: result.confidence,
+      txCount: snapshot.length,
+      uniqueSenders: features[1],
+      samePairRatio: features[9],
+      timestamp: Date.now(),
+    }
+
+    _emitter.emit('classification', alert)
+
     if (result.prediction === 1) {
       console.log(
         `⚠️  ATTACK DETECTED  [${result.label}]` +
@@ -171,4 +186,4 @@ const start = () => {
   setInterval(_classify, WINDOW_MS)
 }
 
-module.exports = { record, start }
+module.exports = { record, start, on: _emitter.on.bind(_emitter) }

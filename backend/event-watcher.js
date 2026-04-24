@@ -1,3 +1,4 @@
+const http = require('http')
 const Web3 = require('web3')
 require('dotenv').config()
 const { HttpsProxyAgent } = require('https-proxy-agent')
@@ -235,6 +236,74 @@ const startHttpPolling = (
 }
 
 // ============================================================
+// SSE Alert Server — broadcasts classification results to the UI
+// and accepts POSTed alerts from simulate-attack.js
+// ============================================================
+const setupAlertServer = () => {
+  const sseClients = new Set()
+
+  const broadcastSSE = (alert) => {
+    const data = `data: ${JSON.stringify(alert)}\n\n`
+    for (const client of [...sseClients]) {
+      try { client.write(data) }
+      catch (_) { sseClients.delete(client) }
+    }
+  }
+
+  const server = http.createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/events') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      })
+      res.write(':ok\n\n')
+      sseClients.add(res)
+      req.on('close', () => sseClients.delete(res))
+
+    } else if (req.method === 'POST' && req.url === '/alert') {
+      let body = ''
+      req.on('data', chunk => { body += chunk })
+      req.on('end', () => {
+        try {
+          const alert = JSON.parse(body)
+          if (alert.prediction === 1) {
+            console.log(
+              `\n⚠️  [SIMULATION] ATTACK DETECTED  [${alert.label}]` +
+              `  confidence: ${(alert.confidence * 100).toFixed(1)}%` +
+              `  | tx=${alert.txCount}` +
+              `  unique_senders=${alert.uniqueSenders}` +
+              `  same_pair_ratio=${alert.samePairRatio.toFixed(2)}\n`
+            )
+          } else {
+            console.log(
+              `\n✅ [SIMULATION] Normal traffic` +
+              `  confidence: ${(alert.confidence * 100).toFixed(1)}%` +
+              `  | tx=${alert.txCount}\n`
+            )
+          }
+          broadcastSSE(alert)
+        } catch (_) {}
+        res.writeHead(200, { 'Access-Control-Allow-Origin': '*' })
+        res.end()
+      })
+
+    } else {
+      res.writeHead(404)
+      res.end()
+    }
+  })
+
+  // Also relay detector events from real blockchain traffic
+  detector.on('classification', broadcastSSE)
+
+  server.listen(3001, () => {
+    console.log('📡 Alert server ready — SSE: http://localhost:3001/events | POST: http://localhost:3001/alert')
+  })
+}
+
+// ============================================================
 // Main
 // ============================================================
 const main = async () => {
@@ -394,6 +463,7 @@ const main = async () => {
   }, 10000)
 
   detector.start()
+  setupAlertServer()
   console.log('🚀 Bridge backend is active and listening...')
 }
 
