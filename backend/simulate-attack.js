@@ -109,88 +109,106 @@ const main = async () => {
 
   startSimulatorServer()
 
-  detector.start()
-
   // ── Window 1: Normal baseline ────────────────────────────────────────────
   // 15 tx from 10 different wallets spread across 18 s → classifier sees normal
+  detector.clearWindow()
   banner(1, 7, 'NORMAL BASELINE', '15 tx · 10 wallets · 1.2 s apart')
   const w1 = [0,1,2,3,4,5,6,7,8,9,0,2,4,6,8]
   for (const i of w1) {
-    detector.record(fakeEvent(NORMAL_USERS[i], BRIDGE))
+    detector.injectMockTxs([fakeEvent(NORMAL_USERS[i], BRIDGE)])
     process.stdout.write('.')
     await sleep(1200)
   }
-  console.log('\n    Waiting for classifier…')
-  await sleep(6000)
+  console.log('\n    Running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   // ── Window 2: DDoS burst ─────────────────────────────────────────────────
   // 5600 tx from 1 wallet in 7 one-second bursts → max_tx_in_1sec ≈ 800
+  detector.clearWindow()
   banner(2, 7, 'DDoS ATTACK', '5600 tx · 1 wallet · 800/sec × 7 sec')
   for (let burst = 0; burst < 7; burst++) {
-    for (let i = 0; i < 800; i++) detector.record(fakeEvent(ATTACKER_1, BRIDGE))
+    const events = []
+    for (let i = 0; i < 800; i++) events.push(fakeEvent(ATTACKER_1, BRIDGE))
+    detector.injectMockTxs(events)
     process.stdout.write(` [burst ${burst + 1}/7]`)
     if (burst < 6) await sleep(1001)
   }
-  console.log('\n    Waiting for classifier…')
-  await sleep(15000)
+  console.log('\n    Running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   // ── Window 3: Sybil attack ───────────────────────────────────────────────
   // 500 tx from 250 unique wallets all targeting one address
+  detector.clearWindow()
   banner(3, 7, 'SYBIL ATTACK', '500 tx · 250 unique wallets → 1 target')
-  for (let i = 0; i < 500; i++) detector.record(fakeEvent(addr(i + 10000), TARGET))
-  console.log('    Burst sent. Waiting for classifier…')
-  await sleep(24000)
+  const sybilEvents = []
+  for (let i = 0; i < 500; i++) sybilEvents.push(fakeEvent(addr(i + 10000), TARGET))
+  detector.injectMockTxs(sybilEvents)
+  console.log('    Burst sent. Running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   // ── Window 4: Bot loop ───────────────────────────────────────────────────
   // 200 tx on the exact same pair with machine-perfect 100 ms spacing
-  // → std_interarrival ≈ 0, same_pair_ratio = 1.0
+  detector.clearWindow()
   banner(4, 7, 'BOT LOOP ATTACK', '200 tx · same pair · 100 ms intervals')
   for (let i = 0; i < 200; i++) {
-    detector.record(fakeEvent(ATTACKER_2, BRIDGE))
+    detector.injectMockTxs([fakeEvent(ATTACKER_2, BRIDGE)])
     process.stdout.write(i % 20 === 19 ? '█' : '▒')
     await sleep(100)
   }
-  console.log('\n    Waiting for classifier…')
-  await sleep(17000)
+  console.log('\n    Running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   // ── Window 5: Normal recovery ────────────────────────────────────────────
+  detector.clearWindow()
   banner(5, 7, 'NORMAL RECOVERY', '10 tx · 8 different wallets')
   const w5 = [1,3,5,7,9,11,1,3,7,5]
   for (const i of w5) {
-    detector.record(fakeEvent(NORMAL_USERS[i], BRIDGE))
+    detector.injectMockTxs([fakeEvent(NORMAL_USERS[i], BRIDGE)])
     process.stdout.write('.')
     await sleep(1500)
   }
-  console.log('\n    Waiting for classifier…')
-  await sleep(9000)
+  console.log('\n    Running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   // ── Window 6: Flash burst ────────────────────────────────────────────────
-  // 2500 tx in ~2 s then complete silence → extreme max_tx_in_1sec, rate_deviation
+  // 2500 tx in ~2 s then complete silence
+  detector.clearWindow()
   banner(6, 7, 'FLASH BURST ATTACK', '2500 tx · 2 sec spike · then silence')
   for (let burst = 0; burst < 5; burst++) {
-    for (let i = 0; i < 500; i++) detector.record(fakeEvent(ATTACKER_3, BRIDGE))
+    const events = []
+    for (let i = 0; i < 500; i++) events.push(fakeEvent(ATTACKER_3, BRIDGE))
+    detector.injectMockTxs(events)
     process.stdout.write(` [burst ${burst + 1}/5]`)
     if (burst < 4) await sleep(400)
   }
-  console.log('\n    Silence… waiting for classifier…')
-  await sleep(24000)
+  console.log('\n    Silence… running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   // ── Window 7: Coordinated multi-wallet attack ────────────────────────────
-  // 3 attackers firing in sync — realistic coordinated scenario
+  detector.clearWindow()
   banner(7, 7, 'COORDINATED ATTACK', '3000 tx · 3 wallets · 5 sync rounds')
   for (let round = 0; round < 5; round++) {
-    for (let i = 0; i < 200; i++) detector.record(fakeEvent(ATTACKER_1, BRIDGE))
-    for (let i = 0; i < 200; i++) detector.record(fakeEvent(ATTACKER_2, BRIDGE))
-    for (let i = 0; i < 200; i++) detector.record(fakeEvent(ATTACKER_3, BRIDGE))
+    const events = []
+    for (let i = 0; i < 200; i++) events.push(fakeEvent(ATTACKER_1, BRIDGE))
+    for (let i = 0; i < 200; i++) events.push(fakeEvent(ATTACKER_2, BRIDGE))
+    for (let i = 0; i < 200; i++) events.push(fakeEvent(ATTACKER_3, BRIDGE))
+    detector.injectMockTxs(events)
     process.stdout.write(` [round ${round + 1}/5]`)
     if (round < 4) await sleep(1001)
   }
-  console.log('\n    Waiting for classifier…')
-  await sleep(17000)
+  console.log('\n    Running classifier…')
+  await detector.forceClassify()
+  await sleep(1000)
 
   console.log('\n╔══════════════════════════════════════════════════════╗')
   console.log('║   Simulation complete — 7 windows · 5 attacks        ║')
-  console.log('║   Check the Security Monitor at /security             ║')
+  console.log('║   Check the Security Monitor at /security            ║')
   console.log('╚══════════════════════════════════════════════════════╝\n')
   process.exit(0)
 }

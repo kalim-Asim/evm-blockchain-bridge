@@ -21,7 +21,7 @@ def main():
         sys.exit(1)
 
     try:
-        with open(os.path.join(ML_DIR, 'bridge_svm_model.pkl'), 'rb') as f:
+        with open(os.path.join(ML_DIR, 'bridge_model.pkl'), 'rb') as f:
             model = pickle.load(f)
         with open(os.path.join(ML_DIR, 'bridge_scaler.pkl'), 'rb') as f:
             scaler = pickle.load(f)

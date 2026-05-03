@@ -183,7 +183,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from 'vue'
+import { defineComponent, ref, computed, onMounted, onUnmounted } from 'vue'
 import { ethers } from 'ethers'
 
 export default defineComponent({
@@ -307,16 +307,44 @@ export default defineComponent({
     }
 
     const simulate = async (type: string) => {
-      if (type === 'flash') {
-        addLog('Flash burst initiated via backend (50 tx)')
-        await sendToBackend({ type: 'flash_burst', count: 50, from: account.value || '0xSimulatedUser' })
-      } else if (type === 'ddos') {
-        addLog('DDoS pattern initiated via backend (30 tx)')
-        await sendToBackend({ type: 'ddos', count: 30, from: account.value || '0xSimulatedUser' })
+      const count = type === 'flash' ? 50 : 30
+      addLog(`Initiating ${type.toUpperCase()} pattern via backend (${count} tx)...`)
+      
+      // Visual fireworks in the activity log
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => {
+          const fakeHash = '0x' + Array.from({length: 8}, () => Math.floor(Math.random()*16).toString(16)).join('')
+          addLog(`[Tx ${i+1}/${count}] INJECT mock-hash-${fakeHash} ...`)
+        }, i * (type === 'flash' ? 20 : 60))
       }
+
+      setTimeout(async () => {
+        await sendToBackend({ type: type === 'flash' ? 'flash_burst' : 'ddos', count, from: account.value || '0xSimulatedUser' })
+        addLog(`>> Attack payload fully deployed to bridge backend.`)
+      }, count * (type === 'flash' ? 20 : 60) + 100)
     }
 
-    onMounted(() => {})
+    let es: EventSource | null = null
+
+    onMounted(() => {
+      // Connect to SSE so the simulator tab also shows the AI response in real-time
+      es = new EventSource('http://localhost:3001/events')
+      es.onmessage = (e: MessageEvent) => {
+        try {
+          const alert = JSON.parse(e.data)
+          if (alert.prediction === 1) {
+            addLog(`🚨 [SVM ML] ATTACK INTERCEPTED! Pattern: ${alert.label}`)
+            addLog(`   => Confidence: ${(alert.confidence * 100).toFixed(1)}% | Txs Blocked: ${alert.txCount}`)
+          } else if (alert.prediction === 0) {
+            addLog(`✅ [SVM ML] Traffic analysis clean. Confidence: ${(alert.confidence * 100).toFixed(1)}%`)
+          }
+        } catch {}
+      }
+    })
+
+    onUnmounted(() => {
+      if (es) es.close()
+    })
 
     return {
       amount, batchCount, logs, account, balance,

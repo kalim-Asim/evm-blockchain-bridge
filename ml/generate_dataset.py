@@ -311,9 +311,495 @@ def generate_burst(hour):
 
 
 # ─────────────────────────────────────────────────────────────
+# ATTACK type 5: Low-and-Slow (Stealth DDoS)
+# ─────────────────────────────────────────────────────────────
+def generate_low_and_slow(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = int(rng.uniform(base * 1.2, base * 2.5))
+    tx_count = max(5, tx_count)
+    
+    unique_senders = max(1, int(rng.normal(tx_count * 0.7, tx_count * 0.1)))
+    unique_receivers = max(1, int(rng.normal(tx_count * 0.6, tx_count * 0.1)))
+    active_pairs = max(1, int(rng.normal(tx_count * 0.65, tx_count * 0.1)))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = max(1, int(rng.normal(3, 1)))
+
+    interarrivals = rng.exponential(60.0 / tx_count, tx_count)
+    min_interarrival = float(np.min(interarrivals)) if tx_count > 1 else 60.0
+    std_interarrival = float(np.std(interarrivals)) if tx_count > 1 else 0.0
+
+    top_sender_share = float(rng.uniform(0.30, 0.55))
+    same_pair_ratio = float(rng.uniform(0.20, 0.50))
+
+    sender_counts = rng.integers(1, 5, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 4),
+        "std_interarrival": round(std_interarrival, 4),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "low_and_slow",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 6: Mimic Attack (Adversarial / Evasion)
+# ─────────────────────────────────────────────────────────────
+def generate_mimic(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = max(3, int(rng.normal(base, base * 0.3)))
+
+    unique_senders = max(1, min(tx_count, int(rng.normal(tx_count * 0.85, tx_count * 0.1))))
+    unique_receivers = max(1, min(tx_count, int(rng.normal(tx_count * 0.4, tx_count * 0.1))))
+    active_pairs = unique_senders
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = max(1, int(rng.normal(2, 1)))
+
+    interarrivals = rng.exponential(60.0 / max(tx_count, 1), tx_count)
+    min_interarrival = float(np.min(interarrivals)) if tx_count > 1 else 60.0
+    std_interarrival = float(np.std(interarrivals)) if tx_count > 1 else 0.0
+
+    top_sender_share = float(rng.uniform(0.05, 0.45))
+    same_pair_ratio = float(rng.uniform(0.40, 0.70))
+
+    sender_counts = rng.integers(1, 5, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 4),
+        "std_interarrival": round(std_interarrival, 4),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "mimic",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 7: Flash Loan / Arbitrage Attack
+# ─────────────────────────────────────────────────────────────
+def generate_flash_loan(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = int(rng.uniform(10, 40))
+
+    unique_senders = int(rng.uniform(1, 5))
+    unique_receivers = int(rng.uniform(1, 5))
+    active_pairs = int(rng.uniform(1, unique_senders * unique_receivers))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = tx_count
+
+    interarrivals = rng.uniform(0.0001, 0.005, tx_count)
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.50, 0.90))
+    same_pair_ratio = float(rng.uniform(0.80, 1.0))
+
+    sender_counts = rng.integers(10, 50, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "flash_loan",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 8: Multi-Phase Attack (Blended)
+# ─────────────────────────────────────────────────────────────
+def generate_multi_phase(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = int(rng.uniform(80, 300))
+
+    unique_senders = int(rng.uniform(20, 100))
+    unique_receivers = int(rng.uniform(5, 15))
+    active_pairs = int(rng.uniform(20, 120))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = int(rng.uniform(5, 25))
+
+    interarrivals = np.concatenate([
+        rng.exponential(0.1, tx_count // 2), 
+        rng.normal(0.5, 0.05, tx_count - tx_count // 2)
+    ])
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.10, 0.30))
+    same_pair_ratio = float(rng.uniform(0.50, 0.80))
+
+    sender_counts = rng.integers(1, 10, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "multi_phase",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 9: Wash Trading / Self-Trading
+# ─────────────────────────────────────────────────────────────
+def generate_wash_trading(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = int(rng.uniform(20, 150))
+
+    unique_senders = int(rng.uniform(2, 6))
+    unique_receivers = unique_senders
+    active_pairs = int(rng.uniform(2, unique_senders * unique_receivers))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = int(rng.uniform(2, 10))
+
+    interarrivals = rng.exponential(60.0 / tx_count, tx_count)
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.20, 0.60))
+    same_pair_ratio = float(rng.uniform(0.85, 1.0))
+
+    sender_counts = rng.integers(5, 50, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 4),
+        "std_interarrival": round(std_interarrival, 4),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "wash_trading",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 10: Distributed Sybil (Advanced)
+# ─────────────────────────────────────────────────────────────
+def generate_distributed_sybil(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = int(rng.uniform(150, 1000))
+
+    unique_senders = int(rng.uniform(100, 400))
+    unique_senders = min(unique_senders, tx_count)
+    unique_receivers = int(rng.uniform(20, 100))
+    
+    low_bound = max(unique_senders, unique_receivers)
+    high_bound = max(low_bound, int(tx_count * 0.8))
+    active_pairs = int(rng.uniform(low_bound, high_bound + 1))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = int(rng.uniform(10, 60))
+
+    interarrivals = rng.exponential(60.0 / tx_count, tx_count)
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.01, 0.05))
+    same_pair_ratio = float(rng.uniform(0.30, 0.60))
+
+    sender_counts = rng.integers(1, 5, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "distributed_sybil",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 11: Noise Injection Attack
+# ─────────────────────────────────────────────────────────────
+def generate_noise_injection(hour):
+    base = HOURLY_BASELINE[hour]
+    normal_tx = int(rng.normal(base, base * 0.3))
+    attack_tx = int(rng.uniform(20, 100))
+    tx_count = max(3, normal_tx) + attack_tx
+
+    unique_senders = max(1, int(rng.normal(tx_count * 0.8, tx_count * 0.1)))
+    unique_receivers = max(1, int(rng.normal(tx_count * 0.7, tx_count * 0.1)))
+    active_pairs = max(1, int(rng.normal(tx_count * 0.75, tx_count * 0.1)))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = int(rng.uniform(10, attack_tx))
+
+    interarrivals = np.concatenate([
+        rng.exponential(60.0 / max(normal_tx, 1), max(normal_tx, 1)),
+        rng.uniform(0.001, 0.05, attack_tx)
+    ])
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.10, 0.35))
+    same_pair_ratio = float(rng.uniform(0.10, 0.40))
+
+    sender_counts = rng.integers(1, 10, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "noise_injection",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 12: Time-Based Evasion
+# ─────────────────────────────────────────────────────────────
+def generate_time_based_evasion(hour):
+    target_hour = int(rng.choice([3, 12]))
+    base = HOURLY_BASELINE[target_hour]
+    
+    if target_hour == 12:
+        tx_count = int(rng.uniform(100, 250))
+    else:
+        tx_count = int(rng.uniform(15, 40))
+
+    unique_senders = int(rng.uniform(max(1, tx_count * 0.1), tx_count * 0.4))
+    unique_receivers = int(rng.uniform(1, 5))
+    active_pairs = unique_senders
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = int(rng.uniform(2, 15))
+
+    interarrivals = rng.exponential(60.0 / tx_count, tx_count)
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.30, 0.70))
+    same_pair_ratio = float(rng.uniform(0.60, 0.90))
+
+    sender_counts = rng.integers(1, 20, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(target_hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "time_based_evasion",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 13: Replay Attack Pattern
+# ─────────────────────────────────────────────────────────────
+def generate_replay(hour):
+    base = HOURLY_BASELINE[hour]
+    tx_count = max(3, int(rng.normal(base, base * 0.2)))
+
+    unique_senders = max(1, int(tx_count * 0.8))
+    unique_receivers = max(1, int(tx_count * 0.7))
+    active_pairs = max(1, int(tx_count * 0.75))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = 2
+
+    min_interarrival = 0.05
+    std_interarrival = 0.5000
+
+    top_sender_share = 0.1500
+    same_pair_ratio = 0.1000
+    sender_entropy = 2.5000
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "replay",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# ATTACK type 14: Gradual Drift Attack
+# ─────────────────────────────────────────────────────────────
+def generate_gradual_drift(hour):
+    base = HOURLY_BASELINE[hour]
+    drift_factor = rng.uniform(1.3, 1.8)
+    tx_count = max(5, int(rng.normal(base * drift_factor, base * 0.2)))
+
+    unique_senders = max(1, int(rng.normal(tx_count * 0.6, tx_count * 0.1)))
+    unique_receivers = max(1, int(rng.normal(tx_count * 0.3, tx_count * 0.1)))
+    active_pairs = max(1, int(rng.normal(tx_count * 0.5, tx_count * 0.1)))
+
+    avg_tx_per_sec = tx_count / 60.0
+    max_tx_in_1sec = max(1, int(rng.normal(3, 1)))
+
+    interarrivals = rng.exponential(60.0 / tx_count, tx_count)
+    min_interarrival = float(np.min(interarrivals))
+    std_interarrival = float(np.std(interarrivals))
+
+    top_sender_share = float(rng.uniform(0.35, 0.55))
+    same_pair_ratio = float(rng.uniform(0.40, 0.65))
+
+    sender_counts = rng.integers(1, 10, size=unique_senders)
+    sender_entropy = shannon_entropy(sender_counts)
+
+    sin_h, cos_h = time_features(hour)
+    rate_deviation = tx_count - base
+
+    return {
+        "tx_count": tx_count,
+        "unique_senders": unique_senders,
+        "unique_receivers": unique_receivers,
+        "active_pairs": active_pairs,
+        "avg_tx_per_sec": round(avg_tx_per_sec, 4),
+        "max_tx_in_1sec": max_tx_in_1sec,
+        "min_interarrival": round(min_interarrival, 6),
+        "std_interarrival": round(std_interarrival, 6),
+        "top_sender_share": round(top_sender_share, 4),
+        "same_pair_ratio": round(same_pair_ratio, 4),
+        "sender_entropy": round(sender_entropy, 4),
+        "sin_hour": round(sin_h, 4),
+        "cos_hour": round(cos_h, 4),
+        "rate_deviation": round(rate_deviation, 4),
+        "label": 1,
+        "attack_type": "gradual_drift",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # GENERATE full dataset
 # ─────────────────────────────────────────────────────────────
-def generate_dataset(n_normal=1500, n_per_attack=375):
+def generate_dataset(n_normal=2000, n_per_attack=140):
     rows = []
     hours = list(range(24))
 
@@ -328,7 +814,13 @@ def generate_dataset(n_normal=1500, n_per_attack=375):
     # Attack windows — attacks can happen any time, slightly more at off-peak (sneaky)
     attack_hours_weights = np.ones(24) / 24  # uniform — attackers don't care about time
 
-    generators = [generate_ddos, generate_sybil, generate_bot_loop, generate_burst]
+    generators = [
+        generate_ddos, generate_sybil, generate_bot_loop, generate_burst,
+        generate_low_and_slow, generate_mimic, generate_flash_loan,
+        generate_multi_phase, generate_wash_trading, generate_distributed_sybil,
+        generate_noise_injection, generate_time_based_evasion, generate_replay,
+        generate_gradual_drift
+    ]
     for gen in generators:
         for _ in range(n_per_attack):
             hour = int(rng.choice(hours, p=attack_hours_weights))
@@ -344,7 +836,7 @@ def generate_dataset(n_normal=1500, n_per_attack=375):
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("Generating dataset...")
-    df = generate_dataset(n_normal=1500, n_per_attack=375)
+    df = generate_dataset(n_normal=2000, n_per_attack=140)
 
     out_path = "bridge_anomaly_dataset.csv"
     df.to_csv(out_path, index=False)
@@ -364,3 +856,4 @@ if __name__ == "__main__":
     # Basic sanity checks
     print("\n--- Feature stats ---")
     print(df.drop(columns=['attack_type']).groupby('label').mean().round(3).T.to_string())
+

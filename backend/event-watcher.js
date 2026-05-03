@@ -36,7 +36,7 @@ const handleEthEvent = async (event, provider, contract) => {
   if (processedEvents.has(eventId)) return
   processedEvents.add(eventId)
 
-  detector.record(event)
+  const isAnomalous = await detector.classifyTransaction(event)
 
   console.log('handleEthEvent')
   const { from, to, value } = event.returnValues
@@ -49,7 +49,13 @@ const handleEthEvent = async (event, provider, contract) => {
     console.log('Transfer is a bridge back')
     return
   }
+
   if (to.toLowerCase() == BRIDGE_WALLET.toLowerCase() && to.toLowerCase() != from.toLowerCase()) {
+    if (isAnomalous) {
+      console.log('🚫 Transaction blocked by Anomaly Detector!')
+      return
+    }
+
     console.log('Tokens received on bridge from ETH chain! Time to bridge!')
 
     try {
@@ -328,8 +334,9 @@ const setupAlertServer = () => {
             const simulatedSender = data.from || '0xDeadBeef00000000000000000000000000000000'
             const val = data.type === 'flash_burst' ? '1000000000000000000' : '50000000000000000'
             
+            const mockEvents = []
             for(let i = 0; i < data.count; i++) {
-              detector.record({
+              mockEvents.push({
                 transactionHash: 'mock-ui-' + Date.now() + '-' + i,
                 logIndex: i,
                 returnValues: {
@@ -339,6 +346,9 @@ const setupAlertServer = () => {
                 }
               })
             }
+            detector.injectMockTxs(mockEvents)
+            console.log(`[UI SIMULATOR] Injected ${data.count} mock txs. Triggering instant classification for UI...`)
+            setTimeout(() => detector.forceClassify(), 500)
           }
         } catch (e) {
           console.error('[UI SIMULATOR] Error handling mock transaction:', e.message)
@@ -520,7 +530,6 @@ const main = async () => {
     }
   }, 10000)
 
-  detector.start()
   setupAlertServer()
   console.log('🚀 Bridge backend is active and listening...')
 }

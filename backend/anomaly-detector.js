@@ -25,15 +25,17 @@ const HOURLY_BASELINES = [4,4,5,5,4,5,8,12,18,22,28,32,35,34,30,26,22,18,15,12,1
 let _window = []
 
 /**
- * Record a Transfer event from the origin chain into the current window.
- * Call this on every origin Transfer event, after deduplication.
+ * Add an array of mock events directly to the window (for UI simulator).
  */
-const record = (event) => {
-  _window.push({
-    timestamp: Date.now(),
-    sender: event.returnValues.from.toLowerCase(),
-    receiver: event.returnValues.to.toLowerCase(),
-  })
+const injectMockTxs = (events) => {
+  const now = Date.now()
+  for (const event of events) {
+    _window.push({
+      timestamp: now,
+      sender: event.returnValues.from.toLowerCase(),
+      receiver: event.returnValues.to.toLowerCase(),
+    })
+  }
 }
 
 const _extractFeatures = (events) => {
@@ -130,22 +132,102 @@ const _runInference = (features) => {
   })
 }
 
-const _classify = async () => {
-  const snapshot = _window.splice(0)  // take all events and clear the window
+const forceClassify = async () => {
+  const now = Date.now()
+  _window = _window.filter(e => now - e.timestamp <= WINDOW_MS)
+  const snapshot = [..._window]  // copy before clearing
 
-  if (snapshot.length === 0) {
-    console.log('[Anomaly] 60s window: 0 transactions — skipping')
-    return
+  // Clear window after snapshot so next simulation window starts fresh
+  _window = []
+
+  if (snapshot.length === 0) return false
+
+  const features = _extractFeatures(snapshot)
+  try {
+    const result = await _runInference(features)
+    if (result.error) return false
+
+    const senderCounts = {}
+    const receiverCounts = {}
+    for (const s of snapshot) {
+      senderCounts[s.sender] = (senderCounts[s.sender] || 0) + 1
+      receiverCounts[s.receiver] = (receiverCounts[s.receiver] || 0) + 1
+    }
+    const topSender = Object.keys(senderCounts).reduce((a, b) => senderCounts[a] > senderCounts[b] ? a : b)
+    const topReceiver = Object.keys(receiverCounts).reduce((a, b) => receiverCounts[a] > receiverCounts[b] ? a : b)
+
+    const alert = {
+      prediction: result.prediction,
+      label: result.label,
+      confidence: result.confidence,
+      txCount: snapshot.length,
+      uniqueSenders: features[1],
+      samePairRatio: features[9],
+      timestamp: now,
+      topSender,
+      topReceiver
+    }
+
+    _emitter.emit('classification', alert)
+
+    return result.prediction === 1
+  } catch (err) {
+    return false
+  }
+}
+
+/**
+ * Clear the sliding window. Useful for simulation scripts
+ * that need to reset between test scenarios.
+ */
+const clearWindow = () => { _window = [] }
+
+/**
+ * Record a Transfer event and run inline classification using a sliding window.
+ * Returns true if anomalous (block), false if normal (allow).
+ */
+const classifyTransaction = async (event) => {
+  const now = Date.now()
+  _window.push({
+    timestamp: now,
+    sender: event.returnValues.from.toLowerCase(),
+    receiver: event.returnValues.to.toLowerCase(),
+  })
+
+  // Prune events older than 60s
+  _window = _window.filter(e => now - e.timestamp <= WINDOW_MS)
+
+  const snapshot = _window
+
+  // Skip inference for sparse windows — you can't detect an attack pattern
+  // from 1–2 transactions, and the degenerate features (entropy=0, etc.)
+  // cause false positives.  The model was trained on windows with ≥ 3 events.
+  if (snapshot.length < 3) {
+    console.log(
+      `✅ Normal traffic (window too small to classify: ${snapshot.length} tx)`
+    )
+    const alert = {
+      prediction: 0,
+      label: 'NORMAL',
+      confidence: 1,
+      txCount: snapshot.length,
+      uniqueSenders: new Set(snapshot.map(e => e.sender)).size,
+      samePairRatio: 0,
+      timestamp: now,
+      topSender: snapshot[0]?.sender || '',
+      topReceiver: snapshot[0]?.receiver || '',
+    }
+    _emitter.emit('classification', alert)
+    return false
   }
 
   const features = _extractFeatures(snapshot)
-  console.log(`[Anomaly] 60s window: ${snapshot.length} tx — running classifier...`)
 
   try {
     const result = await _runInference(features)
     if (result.error) {
       console.error('[Anomaly] Inference error:', result.error)
-      return
+      return false
     }
 
     const senderCounts = {}
@@ -164,7 +246,7 @@ const _classify = async () => {
       txCount: snapshot.length,
       uniqueSenders: features[1],
       samePairRatio: features[9],
-      timestamp: Date.now(),
+      timestamp: now,
       topSender,
       topReceiver
     }
@@ -179,22 +261,19 @@ const _classify = async () => {
         `  unique_senders=${features[1]}` +
         `  same_pair_ratio=${features[9].toFixed(2)}`
       )
+      return true
     } else {
       console.log(
         `✅ Normal traffic` +
         `  confidence: ${(result.confidence * 100).toFixed(1)}%` +
         `  | tx=${snapshot.length}`
       )
+      return false
     }
   } catch (err) {
     console.error('[Anomaly] Inference failed:', err.message)
+    return false
   }
 }
 
-/** Start the 60-second detection loop. */
-const start = () => {
-  console.log('[Anomaly] Detector started — classifying every 60 seconds')
-  setInterval(_classify, WINDOW_MS)
-}
-
-module.exports = { record, start, on: _emitter.on.bind(_emitter) }
+module.exports = { classifyTransaction, injectMockTxs, forceClassify, clearWindow, on: _emitter.on.bind(_emitter) }
