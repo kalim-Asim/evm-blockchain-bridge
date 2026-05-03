@@ -72,9 +72,9 @@ def generate_normal(hour):
     min_interarrival = float(np.min(interarrivals)) if tx_count > 1 else 60.0
     std_interarrival = float(np.std(interarrivals)) if tx_count > 1 else 0.0
 
-    # Pattern: no single sender dominates
-    top_sender_share = float(rng.uniform(0.05, 0.30))
-    same_pair_ratio = float(rng.uniform(0.02, 0.18))
+    # Pattern: no single sender dominates. Sometimes humans might act bursty (adding overlap/noise)
+    top_sender_share = float(rng.uniform(0.05, 0.45))
+    same_pair_ratio = float(rng.uniform(0.02, 0.40))
 
     # Entropy: high (distributed traffic)
     sender_counts = rng.integers(1, 5, size=unique_senders)
@@ -108,22 +108,22 @@ def generate_normal(hour):
 # ─────────────────────────────────────────────────────────────
 def generate_ddos(hour):
     base = HOURLY_BASELINE[hour]
-    tx_count = int(rng.uniform(500, 5000))
+    tx_count = int(rng.uniform(150, 5000))
 
-    unique_senders = int(rng.uniform(1, 6))
-    unique_receivers = int(rng.uniform(1, 4))
+    unique_senders = int(rng.uniform(1, 15))
+    unique_receivers = int(rng.uniform(1, 8))
     active_pairs = int(rng.uniform(1, unique_senders + 1))
 
     avg_tx_per_sec = tx_count / 60.0
-    max_tx_in_1sec = int(rng.uniform(50, min(500, tx_count)))
+    max_tx_in_1sec = int(rng.uniform(20, min(500, tx_count)))
 
     # Bots fire very fast and very regularly
-    interarrivals = rng.exponential(0.02, tx_count)
+    interarrivals = rng.exponential(0.05, tx_count)
     min_interarrival = float(np.min(interarrivals)) if tx_count > 1 else 0.001
-    std_interarrival = float(np.std(interarrivals)) if tx_count > 1 else 0.001
+    std_interarrival = float(np.std(interarrivals)) if tx_count > 1 else 0.01
 
-    top_sender_share = float(rng.uniform(0.70, 1.00))
-    same_pair_ratio = float(rng.uniform(0.80, 1.00))
+    top_sender_share = float(rng.uniform(0.40, 1.00))
+    same_pair_ratio = float(rng.uniform(0.50, 1.00))
 
     sender_counts = rng.integers(100, 1000, size=unique_senders)
     sender_entropy = shannon_entropy(sender_counts)
@@ -210,26 +210,26 @@ def generate_sybil(hour):
 # ─────────────────────────────────────────────────────────────
 def generate_bot_loop(hour):
     base = HOURLY_BASELINE[hour]
-    tx_count = int(rng.uniform(80, 600))
+    tx_count = int(rng.uniform(30, 200))
 
-    unique_senders = int(rng.uniform(2, 8))
-    unique_receivers = int(rng.uniform(2, 8))
+    unique_senders = int(rng.uniform(2, 30))
+    unique_receivers = int(rng.uniform(2, 30))
     active_pairs = int(rng.uniform(2, min(unique_senders * unique_receivers, 10)))
 
     avg_tx_per_sec = tx_count / 60.0
-    max_tx_in_1sec = int(rng.uniform(3, 30))
+    max_tx_in_1sec = int(rng.uniform(1, 10))
 
     # setInterval-style: nearly perfectly regular timing
     interval = 60.0 / tx_count
-    noise = rng.normal(0, interval * 0.02, tx_count)  # 2% noise only
+    noise = rng.normal(0, interval * 0.45, tx_count)  # increased noise
     interarrivals = np.abs(interval + noise)
     min_interarrival = float(np.min(interarrivals))
-    std_interarrival = float(np.std(interarrivals))   # very low — bot fingerprint
+    std_interarrival = float(np.std(interarrivals))   # bot fingerprint
 
-    top_sender_share = float(rng.uniform(0.30, 0.60))
-    same_pair_ratio = float(rng.uniform(0.85, 1.00))   # always same pairs looping
+    top_sender_share = float(rng.uniform(0.15, 0.40))
+    same_pair_ratio = float(rng.uniform(0.20, 0.45))   # always same pairs looping
 
-    sender_counts = rng.integers(10, 100, size=unique_senders)
+    sender_counts = rng.integers(5, 40, size=unique_senders)
     sender_entropy = shannon_entropy(sender_counts)
 
     sin_h, cos_h = time_features(hour)
@@ -261,27 +261,27 @@ def generate_bot_loop(hour):
 def generate_burst(hour):
     base = HOURLY_BASELINE[hour]
 
-    # Burst: 50-300 txs crammed into 1 second
-    burst_size = int(rng.uniform(50, 300))
+    # Burst: 50-150 txs crammed into 1 second
+    burst_size = int(rng.uniform(15, 80))
     # Then a few trickle txs in the rest of the window
-    trickle = int(rng.uniform(0, 10))
+    trickle = int(rng.uniform(5, 25))
     tx_count = burst_size + trickle
 
-    unique_senders = int(rng.uniform(1, 5))
-    unique_receivers = int(rng.uniform(1, 3))
+    unique_senders = int(rng.uniform(1, 12))
+    unique_receivers = int(rng.uniform(1, 8))
     active_pairs = int(rng.uniform(1, unique_senders + 1))
 
     avg_tx_per_sec = tx_count / 60.0
     max_tx_in_1sec = burst_size   # the whole burst in 1 sec
 
     # Interarrivals: within burst = near zero, then large gaps
-    burst_interarrivals = rng.uniform(0.001, 0.01, burst_size)
-    gap = rng.uniform(10, 55, trickle) if trickle > 0 else np.array([])
+    burst_interarrivals = rng.uniform(0.005, 0.1, burst_size)
+    gap = rng.uniform(2, 35, trickle) if trickle > 0 else np.array([])
     all_interarrivals = np.concatenate([burst_interarrivals, gap])
     min_interarrival = float(np.min(all_interarrivals)) if len(all_interarrivals) > 0 else 0.001
     std_interarrival = float(np.std(all_interarrivals)) if len(all_interarrivals) > 1 else 0.0
 
-    top_sender_share = float(rng.uniform(0.60, 1.00))
+    top_sender_share = float(rng.uniform(0.20, 0.85))
     same_pair_ratio = float(rng.uniform(0.75, 1.00))
 
     sender_counts = rng.integers(10, 200, size=unique_senders)

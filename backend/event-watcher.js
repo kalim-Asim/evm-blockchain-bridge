@@ -1,4 +1,6 @@
 const http = require('http')
+const fs = require('fs')
+const path = require('path')
 const Web3 = require('web3')
 require('dotenv').config()
 const { HttpsProxyAgent } = require('https-proxy-agent')
@@ -241,8 +243,18 @@ const startHttpPolling = (
 // ============================================================
 const setupAlertServer = () => {
   const sseClients = new Set()
+  const historyPath = path.join(__dirname, 'history.json')
+  let history = []
+  
+  if (fs.existsSync(historyPath)) {
+    try { history = JSON.parse(fs.readFileSync(historyPath)) } catch (e) {}
+  }
 
   const broadcastSSE = (alert) => {
+    history.unshift(alert)
+    if (history.length > 500) history = history.slice(0, 500)
+    fs.writeFileSync(historyPath, JSON.stringify(history, null, 2))
+    
     const data = `data: ${JSON.stringify(alert)}\n\n`
     for (const client of [...sseClients]) {
       try { client.write(data) }
@@ -261,6 +273,13 @@ const setupAlertServer = () => {
       res.write(':ok\n\n')
       sseClients.add(res)
       req.on('close', () => sseClients.delete(res))
+
+    } else if (req.method === 'GET' && req.url === '/history') {
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      })
+      res.end(JSON.stringify(history))
 
     } else if (req.method === 'POST' && req.url === '/alert') {
       let body = ''
@@ -285,6 +304,45 @@ const setupAlertServer = () => {
           }
           broadcastSSE(alert)
         } catch (_) {}
+        res.writeHead(200, { 'Access-Control-Allow-Origin': '*' })
+        res.end()
+      })
+
+    } else if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      })
+      res.end()
+
+    } else if (req.method === 'POST' && req.url === '/transaction') {
+      let body = ''
+      req.on('data', chunk => { body += chunk })
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body)
+          console.log(`\n[UI SIMULATOR] Received ${data.type} injection requesting ${data.count} mock transactions...`)
+          
+          if (data.type === 'flash_burst' || data.type === 'ddos') {
+            const simulatedSender = data.from || '0xDeadBeef00000000000000000000000000000000'
+            const val = data.type === 'flash_burst' ? '1000000000000000000' : '50000000000000000'
+            
+            for(let i = 0; i < data.count; i++) {
+              detector.record({
+                transactionHash: 'mock-ui-' + Date.now() + '-' + i,
+                logIndex: i,
+                returnValues: {
+                  from: simulatedSender,
+                  to: BRIDGE_WALLET,
+                  value: val
+                }
+              })
+            }
+          }
+        } catch (e) {
+          console.error('[UI SIMULATOR] Error handling mock transaction:', e.message)
+        }
         res.writeHead(200, { 'Access-Control-Allow-Origin': '*' })
         res.end()
       })

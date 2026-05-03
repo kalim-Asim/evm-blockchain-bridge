@@ -46,6 +46,7 @@ export default defineComponent({
       { name: 'Home',        to: '/',            label: 'Bridge' },
       { name: 'Destination', to: '/bridge-back', label: 'Bridge Back' },
       { name: 'Security',    to: '/security',    label: '🛡 Security' },
+      { name: 'Simulator',   to: '/simulator',   label: 'Simulator' },
     ]
     return { links }
   },

@@ -16,6 +16,9 @@
 process.env.ANOMALY_WINDOW_MS = '20000'
 
 const http = require('http')
+const fs = require('fs')
+const path = require('path')
+const { spawn } = require('child_process')
 const detector = require('./anomaly-detector')
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -28,6 +31,8 @@ const ATTACKER_1 = addr(0xdead)
 const ATTACKER_2 = addr(0xbeef)
 const ATTACKER_3 = addr(0xcafe)
 const NORMAL_USERS = Array.from({ length: 15 }, (_, i) => addr(i + 1))
+const SIMULATOR_PORT = Number(process.env.SIMULATOR_PORT || 3002)
+const SIMULATOR_FILE = path.join(__dirname, 'transaction-simulator.html')
 
 // Forward classification results to event-watcher (terminal + UI)
 const postAlert = (alert) => {
@@ -42,6 +47,55 @@ const postAlert = (alert) => {
 }
 detector.on('classification', postAlert)
 
+const openBrowser = (url) => {
+  const opener = process.platform === 'darwin'
+    ? 'open'
+    : process.platform === 'win32'
+      ? 'cmd'
+      : 'xdg-open'
+
+  const args = process.platform === 'win32'
+    ? ['/c', 'start', '', url]
+    : [url]
+
+  const child = spawn(opener, args, { detached: true, stdio: 'ignore' })
+  child.unref()
+}
+
+const startSimulatorServer = () => {
+  const server = http.createServer((req, res) => {
+    const requestPath = req.url === '/' ? '/transaction-simulator.html' : req.url
+
+    if (req.method === 'GET' && requestPath === '/transaction-simulator.html') {
+      try {
+        const html = fs.readFileSync(SIMULATOR_FILE, 'utf8')
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(html)
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+        res.end(`Failed to load simulator page: ${error.message}`)
+      }
+      return
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Not found')
+  })
+
+  server.listen(SIMULATOR_PORT, '127.0.0.1', () => {
+    const url = `http://127.0.0.1:${SIMULATOR_PORT}/transaction-simulator.html`
+    console.log(`🌐 Transaction simulator ready at ${url}`)
+    openBrowser(url)
+    console.log('🧭 Opening simulator in your default browser...')
+  })
+
+  server.on('error', (error) => {
+    console.error(`Failed to start simulator server on port ${SIMULATOR_PORT}:`, error.message)
+  })
+
+  return server
+}
+
 const banner = (n, total, label, detail) => {
   console.log(`\n━━━ Window ${n}/${total} · ${label} ${'━'.repeat(Math.max(0, 42 - label.length))}`)
   if (detail) console.log(`    ${detail}`)
@@ -52,6 +106,8 @@ const main = async () => {
   console.log('║     AKA Bridge — Full Attack Simulation Suite        ║')
   console.log('║     7 windows · 20 s each · ~2.5 min total           ║')
   console.log('╚══════════════════════════════════════════════════════╝\n')
+
+  startSimulatorServer()
 
   detector.start()
 

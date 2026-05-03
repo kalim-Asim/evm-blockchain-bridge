@@ -19,6 +19,11 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Security',
     component: () => import('../views/SecurityMonitor.vue'),
   },
+  {
+    path: '/simulator',
+    name: 'Simulator',
+    component: () => import('../views/Simulator.vue'),
+  },
 
   // TODO: for 404 errors
   // {

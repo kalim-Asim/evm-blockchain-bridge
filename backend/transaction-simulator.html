@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bridge Transaction Simulator - MetaMask Popup Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .status {
+      background: #f5f5f5;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .status-connected {
+      border-left-color: #10b981;
+      background: #f0fdf4;
+      color: #065f46;
+    }
+    .status-disconnected {
+      border-left-color: #ef4444;
+      background: #fef2f2;
+      color: #7f1d1d;
+    }
+    .button-group {
+      margin-bottom: 25px;
+    }
+    .button-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #333;
+      font-size: 14px;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-secondary {
+      background: #764ba2;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #633a8a;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
+    }
+    .btn-secondary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+    .btn-warning:hover {
+      background: #d97706;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+    }
+    .btn-warning:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .full-width {
+      width: 100%;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      border: 1px solid #334155;
+    }
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid #334155;
+    }
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+    .log-error {
+      color: #ef4444;
+    }
+    .log-warning {
+      color: #f59e0b;
+    }
+    .log-success {
+      color: #10b981;
+    }
+    .wallet-info {
+      background: #f0f9ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #1e40af;
+    }
+    .wallet-info code {
+      background: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .instruction {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌉 Bridge Transaction Simulator</h1>
+    <p class="subtitle">MetaMask Integration - Normal Transaction Testing</p>
+
+    <div class="instruction">
+      ℹ️ This page sends <strong>CHSD token transfers</strong> through MetaMask. A popup will appear for each transaction. Make sure MetaMask is installed and connected to Sepolia network.
+
+    <div class="status" id="status">
+      <strong>Status:</strong> Initializing... Please wait
+    </div>
+
+    <div class="wallet-info" id="walletInfo" style="display: none;">
+      <strong>Connected Wallet:</strong> <code id="walletAddress"></code>
+    </div>
+
+    <!-- Normal Transactions -->
+    <div class="button-group">
+      <label>CHSD Token Transfer (Single)</label>
+      <div class="buttons">
+        <button class="btn-primary" id="sendNormalBtn" onclick="sendNormalTransaction()">
+          Send 1 CHSD
+        </button>
+        <button class="btn-primary" id="sendMultipleNormalBtn" onclick="sendMultipleNormalTransactions()">
+          Send 5× CHSD
+        </button>
+      </div>
+    </div>
+
+    <!-- Batch Transactions -->
+    <div class="button-group">
+      <label>Batch CHSD Transfers</label>
+      <div class="input-group">
+        <input type="number" id="batchCount" placeholder="Number of CHSD transfers" min="1" max="100" value="10">
+      </div>
+      <button class="btn-secondary full-width" onclick="sendBatchTransactions()">
+        Send Batch CHSD Transfers
+      </button>
+    </div>
+
+    <!-- Attack Simulations -->
+    <div class="button-group">
+      <label>Attack Simulation (for anomaly detection)</label>
+      <div class="buttons">
+        <button class="btn-warning" onclick="simulateAttack('flash')">
+          Flash Burst
+        </button>
+        <button class="btn-warning" onclick="simulateAttack('ddos')">
+          DDoS Pattern
+        </button>
+      </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="button-group">
+      <label>Control</label>
+      <div class="buttons">
+        <button class="btn-secondary" onclick="connectWallet()">
+          Connect Wallet
+        </button>
+        <button class="btn-secondary" onclick="clearLog()">
+          Clear Log
+        </button>
+      </div>
+    </div>
+
+    <div class="log">
+      <div id="logContainer"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+  <script>
+    let web3;
+    let userAccount;
+    const CHSD_CONTRACT_ADDRESS = '0xC9971B252B980fF08705cF28D554e34347fe2e23'; // CHSD on Sepolia
+    const BRIDGE_WALLET = '0x95d524475F9af10b8745333Dbae73cba7d831272';
+    const CHSD_AMOUNT_WEI = '1000000000000000000'; // 1 CHSD (18 decimals)
+    const TRANSFER_ABI = [
+      {
+        "constant": false,
+        "inputs": [{"name": "to", "type": "address"}, {"name": "amount", "type": "uint256"}],
+        "name": "transfer",
+        "outputs": [{"name": "", "type": "bool"}],
+        "type": "function"
+      }
+    ];
+    const logContainer = document.getElementById('logContainer');
+    const statusDiv = document.getElementById('status');
+    const walletInfo = document.getElementById('walletInfo');
+
+    function addLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function clearLog() {
+      logContainer.innerHTML = '';
+      addLog('Log cleared', 'info');
+    }
+
+    async function initWeb3() {
+      if (typeof window.ethereum === 'undefined') {
+        addLog('❌ MetaMask not detected! Please install MetaMask.', 'error');
+        updateStatus('MetaMask not found', false);
+        return false;
+      }
+
+      web3 = new Web3(window.ethereum);
+      addLog('✅ Web3 initialized', 'success');
+
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAccount = accounts[0];
+        document.getElementById('walletAddress').textContent = userAccount;
+        walletInfo.style.display = 'block';
+        addLog(`✅ Connected to: ${userAccount}`, 'success');
+        updateStatus(`Connected: ${userAccount.slice(0, 10)}...`, true);
+        return true;
+      } catch (error) {
+        addLog(`❌ Connection failed: ${error.message}`, 'error');
+        updateStatus('Connection failed', false);
+        return false;
+      }
+    }
+
+    function updateStatus(message, isConnected) {
+      statusDiv.innerHTML = `<strong>Status:</strong> ${message}`;
+      statusDiv.className = isConnected ? 'status status-connected' : 'status status-disconnected';
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => {
+        if (btn.id !== 'connectWalletBtn' && btn !== document.querySelector('button[onclick="connectWallet()"]')) {
+          btn.disabled = !isConnected;
+        }
+      });
+    }
+
+    async function connectWallet() {
+      addLog('Connecting wallet...', 'info');
+      await initWeb3();
+    }
+
+    async function requestNormalTransaction() {
+      if (!window.ethereum) {
+        throw new Error('MetaMask is not available')
+      }
+
+      // Encode the transfer function call: transfer(to, amount)
+      const transferContract = new web3.eth.Contract(TRANSFER_ABI, CHSD_CONTRACT_ADDRESS);
+      const data = transferContract.methods.transfer(BRIDGE_WALLET, CHSD_AMOUNT_WEI).encodeABI();
+
+      return window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: userAccount,
+          to: CHSD_CONTRACT_ADDRESS,
+          data: data,
+        }],
+      })
+    }
+
+    async function sendNormalTransaction() {
+      if (!userAccount) {
+        addLog('❌ Wallet not connected', 'error');
+        return;
+      }
+
+      try {
+        addLog('📤 Sending 1 CHSD token transfer...', 'info');
+
+        const txHash = await requestNormalTransaction();
+        addLog(`✅ CHSD transfer sent: ${txHash}`, 'success');
+        
+        // Send to backend for anomaly detection
+        await sendToBackend({
+          type: 'normal',
+          txHash: txHash,
+          from: userAccount,
+          to: BRIDGE_WALLET,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        addLog(`❌ Transaction failed: ${error.message}`, 'error');
+      }
+    }
+
+    async function sendMultipleNormalTransactions() {
+      if (!userAccount) {
+        addLog('❌ Wallet not connected', 'error');
+        return;
+      }
+
+      addLog('📤 Sending 5 CHSD token transfers (with 3s delays)...', 'info');
+      
+      for (let i = 1; i <= 5; i++) {
+        try {
+          addLog(`📤 Sending CHSD transfer ${i}/5...`, 'info');
+
+          const txHash = await requestNormalTransaction();
+          addLog(`✅ CHSD transfer ${i}/5 sent: ${txHash.slice(0, 20)}...`, 'success');
+          
+          await sendToBackend({
+            type: 'normal',
+            txHash: txHash,
+            from: userAccount,
+            to: BRIDGE_WALLET,
+            batch: 5,
+            index: i,
+            timestamp: new Date().toISOString()
+          });
+
+          if (i < 5) await sleep(3000);
+        } catch (error) {
+          addLog(`❌ Transfer ${i}/5 failed: ${error.message}`, 'error');
+        }
+      }
+      
+      addLog('📊 Batch complete', 'success');
+    }
+
+    async function sendBatchTransactions() {
+      if (!userAccount) {
+        addLog('❌ Wallet not connected', 'error');
+        return;
+      }
+
+      const batchCount = parseInt(document.getElementById('batchCount').value) || 10;
+      addLog(`📤 Sending ${batchCount} CHSD transactions (no delays - rapid fire)...`, 'info');
+      
+      const promises = [];
+      
+      for (let i = 1; i <= batchCount; i++) {
+        const transferContract = new web3.eth.Contract(TRANSFER_ABI, CHSD_CONTRACT_ADDRESS);
+        const data = transferContract.methods.transfer(BRIDGE_WALLET, CHSD_AMOUNT_WEI).encodeABI();
+
+        promises.push(
+          window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from: userAccount,
+              to: CHSD_CONTRACT_ADDRESS,
+              data: data,
+            }],
+          })
+            .then(txHash => {
+              addLog(`✅ TX ${i}/${batchCount} sent: ${txHash.slice(0, 20)}...`, 'success');
+              return sendToBackend({
+                type: 'batch',
+                txHash: txHash,
+                from: userAccount,
+                to: CHSD_CONTRACT_ADDRESS,
+                batch: batchCount,
+                index: i,
+                timestamp: new Date().toISOString()
+              });
+            })
+            .catch(error => {
+              addLog(`❌ TX ${i}/${batchCount} failed: ${error.message}`, 'error');
+            })
+        );
+      }
+
+      await Promise.allSettled(promises);
+      addLog('📊 Batch processing complete', 'success');
+    }
+
+    async function simulateAttack(type) {
+      if (!userAccount) {
+        addLog('❌ Wallet not connected', 'error');
+        return;
+      }
+
+      addLog(`⚠️ Starting ${type.toUpperCase()} attack simulation...`, 'warning');
+
+      if (type === 'flash') {
+        addLog('💥 Flash burst: 50 rapid CHSD transactions', 'warning');
+        for (let i = 0; i < 50; i++) {
+          const transferContract = new web3.eth.Contract(TRANSFER_ABI, CHSD_CONTRACT_ADDRESS);
+          const data = transferContract.methods.transfer(BRIDGE_WALLET, CHSD_AMOUNT_WEI).encodeABI();
+          window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from: userAccount,
+              to: CHSD_CONTRACT_ADDRESS,
+              data: data,
+            }],
+          }).catch(() => {});
+        }
+      } else if (type === 'ddos') {
+        addLog('🌊 DDoS pattern: 30 CHSD transactions with 100ms intervals', 'warning');
+        for (let i = 0; i < 30; i++) {
+          setTimeout(() => {
+            const transferContract = new web3.eth.Contract(TRANSFER_ABI, CHSD_CONTRACT_ADDRESS);
+            const data = transferContract.methods.transfer(BRIDGE_WALLET, CHSD_AMOUNT_WEI).encodeABI();
+            window.ethereum.request({
+              method: 'eth_sendTransaction',
+              params: [{
+                from: userAccount,
+                to: CHSD_CONTRACT_ADDRESS,
+                data: data,
+              }],
+            }).catch(() => {});
+          }, i * 100);
+        }
+      }
+
+      await sendToBackend({
+        type: 'attack_simulation',
+        attackType: type,
+        from: userAccount,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    async function sendToBackend(data) {
+      try {
+        await fetch('http://localhost:3001/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        }).catch(() => {
+          // Backend may not be listening on this endpoint, that's ok
+        });
+      } catch (e) {
+        // Silently fail if backend is not available
+      }
+    }
+
+    function sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', async () => {
+      addLog('🚀 Page loaded. Initializing MetaMask...', 'info');
+      await initWeb3();
+    });
+
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          updateStatus('Disconnected', false);
+          addLog('❌ Wallet disconnected', 'warning');
+        } else {
+          userAccount = accounts[0];
+          document.getElementById('walletAddress').textContent = userAccount;
+          addLog(`✅ Account switched to: ${userAccount}`, 'warning');
+          updateStatus(`Connected: ${userAccount.slice(0, 10)}...`, true);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

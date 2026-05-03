@@ -148,6 +148,15 @@ const _classify = async () => {
       return
     }
 
+    const senderCounts = {}
+    const receiverCounts = {}
+    for (const s of snapshot) {
+      senderCounts[s.sender] = (senderCounts[s.sender] || 0) + 1
+      receiverCounts[s.receiver] = (receiverCounts[s.receiver] || 0) + 1
+    }
+    const topSender = Object.keys(senderCounts).reduce((a, b) => senderCounts[a] > senderCounts[b] ? a : b)
+    const topReceiver = Object.keys(receiverCounts).reduce((a, b) => receiverCounts[a] > receiverCounts[b] ? a : b)
+
     const alert = {
       prediction: result.prediction,
       label: result.label,
@@ -156,6 +165,8 @@ const _classify = async () => {
       uniqueSenders: features[1],
       samePairRatio: features[9],
       timestamp: Date.now(),
+      topSender,
+      topReceiver
     }
 
     _emitter.emit('classification', alert)

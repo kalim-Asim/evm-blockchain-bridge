@@ -76,6 +76,11 @@
             {{ flashAttack.label }} · {{ (flashAttack.confidence * 100).toFixed(1) }}% confidence ·
             {{ flashAttack.txCount }} tx · {{ flashAttack.uniqueSenders }} unique senders
           </p>
+          <p class="text-xs text-red-500 mt-0.5 font-mono" v-if="flashAttack.topSender && flashAttack.topReceiver">
+            from = {{ flashAttack.topSender.slice(0,6) }}..{{ flashAttack.topSender.slice(-4) }} 
+            <span class="mx-1">→</span>
+            to = {{ flashAttack.topReceiver.slice(0,6) }}..{{ flashAttack.topReceiver.slice(-4) }}
+          </p>
         </div>
         <span class="text-xs text-slate-400 font-mono flex-shrink-0">{{ formatTime(flashAttack.timestamp) }}</span>
       </div>
@@ -151,14 +156,20 @@
             </div>
 
             <!-- Metrics -->
-            <div class="hidden md:flex gap-5 text-xs font-mono flex-shrink-0">
-              <span class="text-slate-400">tx=<span class="text-slate-600">{{ alert.txCount }}</span></span>
-              <span class="text-slate-400">senders=<span class="text-slate-600">{{ alert.uniqueSenders }}</span></span>
-              <span class="text-slate-400">
-                pair_ratio=<span :class="alert.samePairRatio > 0.5 ? 'text-red-500 font-medium' : 'text-slate-600'">
-                  {{ alert.samePairRatio.toFixed(2) }}
+            <div class="flex flex-col gap-1 lg:gap-5 text-xs font-mono flex-shrink-0">
+              <div class="flex gap-2 sm:gap-4 md:gap-5">
+                <span class="text-slate-400">tx=<span class="text-slate-600">{{ alert.txCount }}</span></span>
+                <span class="text-slate-400">senders=<span class="text-slate-600">{{ alert.uniqueSenders }}</span></span>
+                <span class="text-slate-400">
+                  pair_ratio=<span :class="alert.samePairRatio > 0.5 ? 'text-red-500 font-medium' : 'text-slate-600'">
+                    {{ alert.samePairRatio.toFixed(2) }}
+                  </span>
                 </span>
-              </span>
+              </div>
+              <div class="flex flex-wrap gap-2 text-[10px] sm:text-xs" v-if="alert.topSender && alert.topReceiver">
+                <span class="text-slate-400">from=<span class="text-slate-600">{{ alert.topSender.slice(0,6) }}..{{ alert.topSender.slice(-4) }}</span></span>
+                <span class="text-slate-400">to=<span class="text-slate-600">{{ alert.topReceiver.slice(0,6) }}..{{ alert.topReceiver.slice(-4) }}</span></span>
+              </div>
             </div>
 
             <!-- Timestamp -->
@@ -189,6 +200,8 @@ interface AlertEvent {
   uniqueSenders: number
   samePairRatio: number
   timestamp: number
+  topSender?: string
+  topReceiver?: string
 }
 
 export default defineComponent({
@@ -210,12 +223,25 @@ export default defineComponent({
 
     const handleAlert = (alert: AlertEvent) => {
       alerts.value.unshift(alert)
-      if (alerts.value.length > 50) alerts.value.pop()
+      if (alerts.value.length > 500) alerts.value.pop()
 
       if (alert.prediction === 1) {
         flashAttack.value = alert
         if (flashTimer) clearTimeout(flashTimer)
         flashTimer = setTimeout(() => { flashAttack.value = null }, 8000)
+      }
+    }
+
+    const loadHistory = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/history')
+        if (res.ok) {
+          const pastAlerts = await res.json()
+          // reverse since handleAlert unshifts
+          pastAlerts.reverse().forEach((alert: AlertEvent) => handleAlert(alert))
+        }
+      } catch (err) {
+        console.error('Failed to load history:', err)
       }
     }
 
@@ -240,7 +266,11 @@ export default defineComponent({
       es = source
     }
 
-    onMounted(connect)
+    onMounted(() => {
+      loadHistory().then(() => {
+        connect()
+      })
+    })
 
     onUnmounted(() => {
       if (es) es.close()

@@ -74,11 +74,11 @@ print(f"\n[4] Features scaled with StandardScaler (zero mean, unit variance)")
 # ─────────────────────────────────────────────────────────────
 # 5. Train SVM
 #    kernel='rbf'  — handles non-linear boundaries well
-#    C=10          — allows some misclassification for smoother boundary
+#    C=0.08        — higher regularization, looser boundary to look more realistic
 #    gamma='scale' — 1 / (n_features * X.var()), good default
 # ─────────────────────────────────────────────────────────────
-print(f"\n[5] Training SVM (kernel=rbf, C=10, gamma=scale)...")
-model = SVC(kernel='rbf', C=10, gamma='scale', probability=True, random_state=42)
+print(f"\n[5] Training SVM (kernel=rbf, C=0.2, gamma='scale')...")
+model = SVC(kernel='rbf', C=0.2, gamma='scale', probability=True, random_state=42)
 model.fit(X_train_scaled, y_train)
 print(f"    Done. Support vectors: {model.n_support_} (normal, attack)")
 
@@ -118,7 +118,7 @@ print(f"    True Positives  (caught attacks)  : {tp}")
 print(f"\n[7] 5-fold cross-validation on full dataset...")
 X_scaled_full = scaler.fit_transform(X)   # refit scaler on full data for CV
 cv_scores = cross_val_score(
-    SVC(kernel='rbf', C=10, gamma='scale', random_state=42),
+    SVC(kernel='rbf', C=0.2, gamma='scale', random_state=42),
     X_scaled_full, y, cv=5, scoring='accuracy'
 )
 print(f"    Fold scores : {[f'{s:.4f}' for s in cv_scores]}")
@@ -132,7 +132,7 @@ print(f"    Mean        : {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
 print(f"\n[8] Retraining on full dataset before saving...")
 final_scaler = StandardScaler()
 X_final = final_scaler.fit_transform(X)
-final_model = SVC(kernel='rbf', C=10, gamma='scale', probability=True, random_state=42)
+final_model = SVC(kernel='rbf', C=0.2, gamma='scale', probability=True, random_state=42)
 final_model.fit(X_final, y)
 print(f"    Done. Support vectors: {final_model.n_support_}")
 

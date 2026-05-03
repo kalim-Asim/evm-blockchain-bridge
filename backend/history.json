@@ -1,0 +1,162 @@
+[
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.9455529947686235,
+    "txCount": 3000,
+    "uniqueSenders": 3,
+    "samePairRatio": 0.3333333333333333,
+    "timestamp": 1777752341952,
+    "topSender": "0x0000000000000000000000000000000000051966",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.5071545807373928,
+    "txCount": 2500,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777752321992,
+    "topSender": "0x0000000000000000000000000000000000051966",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 0,
+    "label": "NORMAL",
+    "confidence": 0.9905010806291397,
+    "txCount": 10,
+    "uniqueSenders": 6,
+    "samePairRatio": 0.2,
+    "timestamp": 1777752301939,
+    "topSender": "0x0000000000000000000000000000000000000008",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.9999984173964092,
+    "txCount": 90,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777752281990,
+    "topSender": "0x0000000000000000000000000000000000048879",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.9999985011512504,
+    "txCount": 110,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777752261981,
+    "topSender": "0x0000000000000000000000000000000000048879",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 0,
+    "label": "NORMAL",
+    "confidence": 0.7122002718394023,
+    "txCount": 500,
+    "uniqueSenders": 500,
+    "samePairRatio": 0.002,
+    "timestamp": 1777752241940,
+    "topSender": "0x0000000000000000000000000000000000010499",
+    "topReceiver": "0xffffffffffffffffffffffffffffffffffffffff"
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.7499571262569263,
+    "txCount": 5600,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777752221974,
+    "topSender": "0x0000000000000000000000000000000000057005",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 0,
+    "label": "NORMAL",
+    "confidence": 0.9948888683344033,
+    "txCount": 15,
+    "uniqueSenders": 10,
+    "samePairRatio": 0.13333333333333333,
+    "timestamp": 1777752201930,
+    "topSender": "0x0000000000000000000000000000000000000009",
+    "topReceiver": "0x95d524475f9af10b8745333dbae73cba7d831272"
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.9455529947686235,
+    "txCount": 3000,
+    "uniqueSenders": 3,
+    "samePairRatio": 0.3333333333333333,
+    "timestamp": 1777750464321
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.5071545748559069,
+    "txCount": 2500,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777750444238
+  },
+  {
+    "prediction": 0,
+    "label": "NORMAL",
+    "confidence": 0.9905042242672288,
+    "txCount": 10,
+    "uniqueSenders": 6,
+    "samePairRatio": 0.2,
+    "timestamp": 1777750424270
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.999998417420038,
+    "txCount": 90,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777750404147
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.9999985011193735,
+    "txCount": 110,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777750384249
+  },
+  {
+    "prediction": 0,
+    "label": "NORMAL",
+    "confidence": 0.7122002718394023,
+    "txCount": 500,
+    "uniqueSenders": 500,
+    "samePairRatio": 0.002,
+    "timestamp": 1777750364274
+  },
+  {
+    "prediction": 1,
+    "label": "ATTACK",
+    "confidence": 0.7499571258196381,
+    "txCount": 5600,
+    "uniqueSenders": 1,
+    "samePairRatio": 1,
+    "timestamp": 1777750344291
+  },
+  {
+    "prediction": 0,
+    "label": "NORMAL",
+    "confidence": 0.9948878269348311,
+    "txCount": 15,
+    "uniqueSenders": 10,
+    "samePairRatio": 0.13333333333333333,
+    "timestamp": 1777750324240
+  }
+]
