@@ -74,7 +74,7 @@ function writeRecord(record) {
  * Called on every Transfer event that goes TO the bridge wallet.
  * Matches exactly what event-watcher.js does before calling detector.record().
  */
-function handleTransfer(event) {
+async function handleTransfer(event) {
   const from  = (event.returnValues.from  || '').toLowerCase()
   const to    = (event.returnValues.to    || '').toLowerCase()
   const value = event.returnValues.value  || '0'
@@ -85,11 +85,24 @@ function handleTransfer(event) {
   // Ignore bridge wallet sending to itself (internal ops)
   if (from === BRIDGE) return
 
+  // Fetch the actual block timestamp from the EVM. This is crucial because
+  // dataset-traffic-gen.js uses evm_increaseTime to fast-forward hours of traffic
+  // in seconds. Date.now() would collapse everything into the current real second.
+  let blockTimestampMs = Date.now()
+  try {
+    const block = await web3.eth.getBlock(event.blockNumber)
+    if (block && block.timestamp) {
+      blockTimestampMs = block.timestamp * 1000
+    }
+  } catch (err) {
+    console.error(`[Listener] Failed to get block ${event.blockNumber} timestamp`)
+  }
+
   const record = {
     // These 3 fields match exactly what anomaly-detector.js's record() expects:
     sender:      from,
     receiver:    to,
-    timestamp:   Date.now(),   // ms — same as detector uses
+    timestamp:   blockTimestampMs,
 
     // Extra fields for feature extraction context:
     txHash:      event.transactionHash || 'unknown',

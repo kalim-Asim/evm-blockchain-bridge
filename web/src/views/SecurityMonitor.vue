@@ -91,7 +91,10 @@
         <!-- Log header -->
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 class="text-sm font-semibold text-slate-700">Detection Log</h2>
-          <span class="text-xs text-slate-400 font-mono">newest first</span>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-slate-400 font-mono">newest first</span>
+            <button @click="clearHistory" class="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded transition-colors font-medium">Clear History</button>
+          </div>
         </div>
 
         <!-- Empty state -->
@@ -245,6 +248,17 @@ export default defineComponent({
       }
     }
 
+    const clearHistory = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/history', { method: 'DELETE' })
+        if (res.ok) {
+          alerts.value = []
+        }
+      } catch (err) {
+        console.error('Failed to clear history:', err)
+      }
+    }
+
     const connect = () => {
       if (es) { es.close(); es = null }
 
@@ -278,7 +292,7 @@ export default defineComponent({
       if (flashTimer) clearTimeout(flashTimer)
     })
 
-    return { connected, alerts, totalWindows, attackCount, lastAlert, flashAttack, formatTime }
+    return { connected, alerts, totalWindows, attackCount, lastAlert, flashAttack, formatTime, clearHistory }
   },
 })
 </script>

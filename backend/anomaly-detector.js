@@ -24,14 +24,33 @@ const HOURLY_BASELINES = [4,4,5,5,4,5,8,12,18,22,28,32,35,34,30,26,22,18,15,12,1
 // Current window: { timestamp (ms), sender, receiver }[]
 let _window = []
 
+// Optional hour override for deterministic simulation runs.
+// When set, _extractFeatures uses this value instead of the real wall-clock hour,
+// so rateDeviation is stable regardless of what time the simulation is executed.
+// Set via detector.setHourOverride(h); clear with detector.setHourOverride(null).
+let _overrideHour = null
+const setHourOverride = (h) => { _overrideHour = h }
+
 /**
  * Add an array of mock events directly to the window (for UI simulator).
+ *
+ * FIX 1 — Timestamp spreading:
+ *   Previously every event in the batch was stamped with the same Date.now(),
+ *   which collapsed all txs into one second bucket. This produced attack-like
+ *   features (maxTxIn1Sec = N, minInterarrival = 0) even for small normal
+ *   windows, causing flapping on Windows 1 and 5.
+ *
+ *   Now each event gets baseTimestamp + i (1 ms apart). For single-event calls
+ *   (normal windows) nothing changes. For attack bursts, 1 ms spacing still
+ *   stays within the same Math.floor(ts/1000) bucket, so burst detection is
+ *   unaffected. The caller can pass an explicit baseTimestamp to simulate
+ *   human-paced inter-arrival times (see simulate-attack.js).
  */
-const injectMockTxs = (events) => {
-  const now = Date.now()
-  for (const event of events) {
+const injectMockTxs = (events, baseTimestamp = Date.now()) => {
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i]
     _window.push({
-      timestamp: now,
+      timestamp: baseTimestamp + i, // 1 ms spread per event — keeps same-second bucket for bursts
       sender: event.returnValues.from.toLowerCase(),
       receiver: event.returnValues.to.toLowerCase(),
     })
@@ -39,7 +58,10 @@ const injectMockTxs = (events) => {
 }
 
 const _extractFeatures = (events) => {
-  const hour = new Date().getHours()
+  // FIX 2 — Use _overrideHour when set so rateDeviation is deterministic
+  // during simulation regardless of wall-clock time.
+  const hour = _overrideHour !== null ? _overrideHour : new Date().getHours()
+
   const senders = events.map(e => e.sender)
   const receivers = events.map(e => e.receiver)
   const pairs = events.map(e => `${e.sender}->${e.receiver}`)
@@ -141,6 +163,23 @@ const forceClassify = async () => {
   _window = []
 
   if (snapshot.length === 0) return false
+
+  // Sparse Window Guard: Don't classify if fewer than 3 tx
+  if (snapshot.length < 3) {
+    const alert = {
+      prediction: 0,
+      label: 'NORMAL',
+      confidence: 1,
+      txCount: snapshot.length,
+      uniqueSenders: new Set(snapshot.map(e => e.sender)).size,
+      samePairRatio: 0,
+      timestamp: now,
+      topSender: snapshot[0]?.sender || '',
+      topReceiver: snapshot[0]?.receiver || '',
+    }
+    _emitter.emit('classification', alert)
+    return false
+  }
 
   const features = _extractFeatures(snapshot)
   try {
@@ -276,4 +315,11 @@ const classifyTransaction = async (event) => {
   }
 }
 
-module.exports = { classifyTransaction, injectMockTxs, forceClassify, clearWindow, on: _emitter.on.bind(_emitter) }
+module.exports = {
+  classifyTransaction,
+  injectMockTxs,
+  forceClassify,
+  clearWindow,
+  setHourOverride,
+  on: _emitter.on.bind(_emitter),
+}

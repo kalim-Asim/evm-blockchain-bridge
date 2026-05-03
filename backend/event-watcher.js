@@ -287,6 +287,23 @@ const setupAlertServer = () => {
       })
       res.end(JSON.stringify(history))
 
+    } else if (req.method === 'DELETE' && req.url === '/history') {
+      history = []
+      fs.writeFileSync(historyPath, JSON.stringify(history, null, 2))
+      res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
+      })
+      res.end()
+
+    } else if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      })
+      res.end()
+
     } else if (req.method === 'POST' && req.url === '/alert') {
       let body = ''
       req.on('data', chunk => { body += chunk })

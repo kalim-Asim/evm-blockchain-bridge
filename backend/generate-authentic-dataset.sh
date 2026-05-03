@@ -29,9 +29,9 @@ set -a
 source .env.dataset
 set +a
 
-MODES=("normal" "burst" "repeated" "spike" "sybil" "botloop")
-echo "[4/6] Generating authentic traffic for ${#MODES[@]} modes..."
-echo "      (normal=5min, burst/repeated/sybil/botloop=~1min each, spike=~4min)"
+MODES=("normal" "normal-steady" "normal-busy" "normal-whale" "normal-retail" "normal-offpeak" "burst" "repeated" "spike" "sybil" "botloop")
+echo "[4/6] Generating authentic traffic for ${#MODES[@]} modes via EVM Time-Warping..."
+echo "      (Simulating 25 hours of normal traffic and 8 hours of attacks in minutes!)"
 
 # Remove any old JSONL files to ensure fresh dataset
 rm -f dataset-events-*.jsonl
