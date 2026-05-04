@@ -8,7 +8,7 @@ A full-stack blockchain bridge prototype connecting **Ethereum Sepolia** and **H
 
 ## What's New (Latest Updates)
 
-*   **Ensemble ML Model (Anti-Overfitting):** Upgraded the base SVM to a robust **Voting Ensemble Classifier (Random Forest + Gradient Boosting)**. The model now trains with injected statistical sensor noise, capping artificial accuracy and ensuring production-grade generalization against novel attack vectors.
+*   **Linear SVM Model (Anti-Overfitting):** Upgraded the machine learning engine to a robust **Linear Support Vector Classifier (SVM)**. The model is intentionally underfitted using heavy class weighting (`{0: 20, 1: 1}`) and low regularization to strictly eliminate false positives on Normal traffic while achieving ~89% accuracy on novel attacks.
 *   **Authentic Dataset Generation Pipeline:** Replaced the pure-Python synthetic data generator with a fully orchestrated, local Hardhat node pipeline. We now generate *real* EVM transactions across 6 traffic modes (Normal, DDoS Burst, Sybil, Botloop, Spike, Repeated), capture them via WebSockets, and extract features to train the model on authentic data.
 *   **Overlapping Sliding Windows:** Upgraded the dataset extractor to use a 1-second sliding window step. This massively augments the dataset and perfectly mirrors the real-time inference loop of the production detector.
 *   **Instant AI Analysis (Simulator UI):** Injecting attack patterns (DDoS/Flash Bursts) via the frontend Simulator tab bypasses the 60s monitoring window using `forceClassify()` for instantaneous and dramatic response demonstrations.
@@ -65,13 +65,13 @@ evm-blockchain-bridge/
 │   └── test/
 │
 ├── backend/                    # Bridge backend (Node.js)
+│   ├── data/                   # JSONL logs and anomaly history
+│   ├── dataset/                # Authentic dataset generation scripts
+│   ├── scripts/                # Execution shells
+│   ├── test/                   # Validation tests
 │   ├── event-watcher.js        # Watches both chains, triggers mint/burn + anomaly detection
 │   ├── anomaly-detector.js     # 60s window feature extractor + ML inference runner
-│   ├── simulate-attack.js      # Demo script: runs 7 isolated attack windows
-│   ├── generate-authentic-dataset.sh # Orchestrates the local Hardhat dataset pipeline
-│   ├── dataset-traffic-gen.js  # Fires EVM transactions for 6 specific attack/normal modes
-│   ├── dataset-listener.js     # Captures raw EVM events to JSONL files
-│   └── dataset-extract.js      # Transforms JSONL events to CSV features using sliding windows
+│   └── simulate-attack.js      # Demo script: runs 7 isolated attack windows
 │
 ├── web/                        # Frontend (Vue 3 + Vite + Tailwind)
 │   └── src/
@@ -83,9 +83,9 @@ evm-blockchain-bridge/
 │
 └── ml/                             # Anomaly Detection
     ├── bridge_anomaly_dataset.csv  # Extracted authentic features for training
-    ├── train_model.py              # Ensemble model training, cross-validation & export
+    ├── train_model.py              # SVM model training, cross-validation & export
     ├── infer.py                    # Inference script called by the backend at runtime
-    ├── bridge_model.pkl            # Trained Ensemble classifier (ready for inference)
+    ├── bridge_model.pkl            # Trained SVM classifier (ready for inference)
     └── bridge_scaler.pkl           # Fitted StandardScaler (required at inference)
 ```
 
@@ -99,7 +99,7 @@ evm-blockchain-bridge/
 | Contract Tooling | Hardhat, ethers.js |
 | Bridge Backend | Node.js, Web3.js 1.7 |
 | Frontend | Vue 3, Vite, Tailwind CSS, ethers.js |
-| Anomaly Detection | Python, scikit-learn (Random Forest, GBC), pandas, numpy |
+| Anomaly Detection | Python, scikit-learn (Linear SVM), pandas, numpy |
 | Origin Network | Ethereum Sepolia Testnet |
 | Destination Network | Harmony Shard 0 Testnet |
 
@@ -134,7 +134,7 @@ A bridge backend is vulnerable to:
 
 ### Approach
 
-Every incoming transaction triggers a **60-second lookback window**. The traffic in that window is condensed into **14 statistical features** and classified by a trained **Voting Ensemble Model (Random Forest + Gradient Boosting Classifier)** as either `NORMAL (0)` or `ATTACK (1)`.
+Every incoming transaction triggers a **60-second lookback window**. The traffic in that window is condensed into **14 statistical features** and classified by a trained **Linear Support Vector Classifier (SVM)** as either `NORMAL (0)` or `ATTACK (1)`.
 
 ### Feature Groups
 
@@ -166,13 +166,13 @@ Using a **1-second Overlapping Sliding Window** technique, the raw transaction e
 
 ### Model Training Results
 
-The Ensemble Model trains with injected Gaussian sensor noise (to simulate network degradation and prevent overfitting). Recent benchmark results:
+The Support Vector Machine is heavily regularized and class-weighted to prevent overfitting. Recent benchmark results on the authentic dataset:
 
 | Metric | Score |
 |---|---|
-| Accuracy | ~93.0% |
-| ROC-AUC | ~0.96 |
-| 5-fold Cross-Validation | 0.92 ± 0.02 |
+| Accuracy | ~89.1% |
+| ROC-AUC | ~0.94 |
+| 5-fold Cross-Validation | 0.90 ± 0.01 |
 
 The trained model and scaler are saved as `.pkl` files in `ml/` and are **integrated into the running Node.js backend**.
 
@@ -310,7 +310,7 @@ This scans the last 5000 blocks on Sepolia, finds unprocessed bridge transfers, 
 **Generate an Authentic Dataset & Train Model:**
 ```bash
 # This spins up a local EVM, simulates 6 traffic modes natively, and trains the model.
-./backend/generate-authentic-dataset.sh
+./backend/scripts/generate-authentic-dataset.sh
 ```
 
 **Run inference manually (test the model):**

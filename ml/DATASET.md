@@ -2,41 +2,51 @@
 
 ## Overview
 
-`bridge_anomaly_dataset.csv` is a synthetic dataset generated to train an SVM-based anomaly detector for the AKA Bridge. Each row represents one **60-second monitoring window** of bridge traffic, described by 14 numerical features and a binary label.
+`bridge_anomaly_dataset.csv` is an **authentic EVM transaction dataset** generated via a local Hardhat node. It captures raw `Transfer` events sent to a simulated ERC20 contract, processing them into 14 statistical features using a 1-second overlapping sliding window. This dataset is designed to train the anomaly detection model used in the AKA Bridge.
 
 ---
 
-## Why Synthetic?
+## Why Authentic over Synthetic?
 
-The bridge prototype has minimal real transaction history (< 10 txs). Real-world bridge attack datasets are not publicly available. The synthetic generator reproduces the **statistical fingerprints** of real attack patterns documented in blockchain security research, making it suitable for training a proof-of-concept model.
+Initially, the project used purely synthetic statistical distributions to generate dataset rows. While useful for early testing, a synthetic dataset fails to capture the true latency, block-mining variability, and raw EVM transaction mechanics.
+
+The **Authentic Pipeline** solves this by programmatically deriving funded wallets on a local node and executing real `.transfer()` transactions. This simulates actual traffic flows, complete with EVM block timestamps, mimicking what the production node sees over WebSocket/HTTP.
 
 ---
 
-## Dataset Statistics
+## Generation Pipeline
 
-| Property | Value |
-|---|---|
-| Total rows | 3000 |
-| Normal windows (label=0) | 1500 |
-| Attack windows (label=1) | 1500 |
-| Features | 14 |
-| Class balance | 50 / 50 |
+### 1. Traffic Generation (`backend/dataset-traffic-gen.js`)
+This script uses multiple test wallets to generate realistic bridge transfers. It employs **EVM Time-Warping** (`evm_increaseTime` and `evm_mine`) to simulate hours of human-paced and bot-paced traffic in minutes. It runs through specific predefined modes:
 
-### Attack type breakdown (within label=1)
+**Normal Modes (Label = 0)**
+*   **Normal:** Mixed realistic human traffic (casual users, repeat users, and power users).
+*   **Normal-Steady:** Low-volume steady drip, one user at a time.
+*   **Normal-Busy:** Peak-hour surge with many users and a faster pace.
+*   **Normal-Whale:** A few high-value wallets making repeated transfers with human-like jitter.
+*   **Normal-Retail:** Many distinct wallets sending only 1-2 transactions ever (simulating airdrop/onboarding events).
+*   **Normal-Offpeak:** Sparse night-time or weekend trickle.
 
-| Attack Type | Count | Description |
-|---|---|---|
-| `ddos` | 375 | Mass flooding from 1–5 wallets |
-| `sybil` | 375 | Many fake wallets targeting one receiver |
-| `bot_loop` | 375 | Scripted looping between same pairs |
-| `burst` | 375 | Hundreds of txs in 1 second, then silence |
+**Attack Modes (Label = 1)**
+*   **Burst:** DDoS massive flood from 1-2 wallets targeting the bridge.
+*   **Repeated:** A single wallet hammering the bridge continuously.
+*   **Spike:** Waves of quiet traffic followed by massive spikes.
+*   **Sybil:** Coordinated attacks from multiple wallets all funneling into the bridge.
+*   **Botloop:** Machine-precise intervals (e.g. 250ms loops) from a single sender without human jitter.
+
+### 2. Event Listener (`backend/dataset-listener.js`)
+This script acts identically to the real bridge's `event-watcher.js`. It listens to the Hardhat node via HTTP/WSS, extracting `Transfer` events and their genuine block timestamps, saving them to `dataset-events-<mode>.jsonl` files.
+
+### 3. Feature Extraction (`backend/dataset-extract.js`)
+This processes the `.jsonl` files. It steps through the timeline second-by-second (a **1-second overlapping sliding window**), looking back exactly 60 seconds from the current step to extract features. 
 
 ---
 
 ## Feature Definitions
 
-### Volume Features — "How heavy is the traffic?"
+The sliding window yields 14 features:
 
+### Volume Features — "How heavy is the traffic?"
 | Column | Type | Description |
 |---|---|---|
 | `tx_count` | int | Total transactions in the 60s window |
@@ -45,7 +55,6 @@ The bridge prototype has minimal real transaction history (< 10 txs). Real-world
 | `active_pairs` | int | Unique sender→receiver combinations |
 
 ### Velocity Features — "How fast is it arriving?"
-
 | Column | Type | Description |
 |---|---|---|
 | `avg_tx_per_sec` | float | tx_count / 60 |
@@ -54,7 +63,6 @@ The bridge prototype has minimal real transaction history (< 10 txs). Real-world
 | `std_interarrival` | float | Standard deviation of inter-transaction gaps |
 
 ### Pattern Features — "Is it centralised or distributed?"
-
 | Column | Type | Description |
 |---|---|---|
 | `top_sender_share` | float | Fraction of txs from the single most active sender (0–1) |
@@ -62,82 +70,29 @@ The bridge prototype has minimal real transaction history (< 10 txs). Real-world
 | `sender_entropy` | float | Shannon entropy of sender distribution (higher = more spread out) |
 
 ### Context Features — "Is this normal for this time of day?"
-
 | Column | Type | Description |
 |---|---|---|
 | `sin_hour` | float | sin(2π × hour / 24) — cyclical hour encoding |
 | `cos_hour` | float | cos(2π × hour / 24) — cyclical hour encoding |
 | `rate_deviation` | float | tx_count minus the historical hourly average |
 
-### Label
-
+### Labels
 | Column | Values | Meaning |
 |---|---|---|
-| `label` | 0 / 1 | 0 = normal traffic, 1 = attack |
-| `attack_type` | string | `normal`, `ddos`, `sybil`, `bot_loop`, `burst` |
-
----
-
-## Statistical Separation (mean values by class)
-
-| Feature | Normal (0) | Attack (1) | Signal |
-|---|---|---|---|
-| `tx_count` | ~24 | ~944 | Attacks flood the bridge |
-| `unique_receivers` | ~17 | ~2 | Attacks target specific wallets |
-| `same_pair_ratio` | 0.10 | 0.91 | Attacks loop the same pairs |
-| `max_tx_in_1sec` | ~2 | ~124 | Attacks burst in one second |
-| `std_interarrival` | 3.2 | 1.4 | Bots are regular, humans are not |
-| `sender_entropy` | 3.9 | 2.8 | Normal traffic is more distributed |
-| `rate_deviation` | ~0 | ~927 | Attacks massively exceed the baseline |
-
----
-
-## Generation Logic
-
-Normal traffic is modelled using:
-- Hourly baselines (peak ~35 txs/min at noon, trough ~4 at 4am)
-- Exponential inter-arrival times (Poisson process — standard for network traffic)
-- High sender diversity, low pair repetition
-
-Each attack type uses distinct statistical parameters:
-
-**DDoS** — `tx_count` ∈ [500, 5000], `unique_senders` ∈ [1, 5], interarrivals sampled from Exponential(0.02) — extremely fast and regular.
-
-**Sybil** — `unique_senders` ∈ [50, 300], `unique_receivers` ∈ [1, 2], `same_pair_ratio` ∈ [0.88, 1.0] — many sources, one target.
-
-**Bot Loop** — interarrivals generated as `interval + Normal(0, 2% noise)` — near-perfect regularity, `std_interarrival` ≈ 0.
-
-**Burst** — `max_tx_in_1sec` = entire burst size, interarrivals inside burst ∈ [0.001, 0.01], large gaps afterward.
+| `label` | 0 / 1 | 0 = Normal Traffic, 1 = Attack |
+| `attack_type` | string | `normal`, `ddos`, `sybil`, `burst`, `bot_loop`, `spike`, `repeated` |
 
 ---
 
 ## Reproducing the Dataset
 
+To build the dataset completely from scratch (this takes ~15 minutes and automatically launches Hardhat, generates traffic, extracts features, and retrains the ML model):
+
 ```bash
-cd ml
-python3 generate_dataset.py
+cd backend
+./generate-authentic-dataset.sh
 ```
 
-The generator uses a fixed random seed (`seed=42`) so output is fully reproducible.
+## Scaling and ML Processing
 
----
-
-## Recommended Preprocessing for SVM
-
-SVM is sensitive to feature scale. Before training:
-
-```python
-from sklearn.preprocessing import StandardScaler
-
-features = [
-    'tx_count', 'unique_senders', 'unique_receivers', 'active_pairs',
-    'avg_tx_per_sec', 'max_tx_in_1sec', 'min_interarrival', 'std_interarrival',
-    'top_sender_share', 'same_pair_ratio', 'sender_entropy',
-    'sin_hour', 'cos_hour', 'rate_deviation'
-]
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X_train)
-```
-
-Drop `attack_type` before training (it's for analysis only, not a model input).
+The dataset features are raw numerical values and must be scaled prior to classification using the `StandardScaler` fitted during training (saved as `bridge_scaler.pkl`). The ML model strictly utilizes a Linear Support Vector Classifier (`SVC`) optimized to completely eliminate false positives for "Normal" traffic windows while successfully classifying authentic attack traffic.

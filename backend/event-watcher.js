@@ -249,7 +249,7 @@ const startHttpPolling = (
 // ============================================================
 const setupAlertServer = () => {
   const sseClients = new Set()
-  const historyPath = path.join(__dirname, 'history.json')
+  const historyPath = path.join(__dirname, 'data', 'history.json')
   let history = []
   
   if (fs.existsSync(historyPath)) {

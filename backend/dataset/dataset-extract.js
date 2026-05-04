@@ -48,23 +48,23 @@ const HOURLY_BASELINES = [4,4,5,5,4,5,8,12,18,22,28,32,35,34,30,26,22,18,15,12,1
 // dataset-extract.js skips any file that doesn't exist (logged as SKIP).
 const DEFAULT_INPUTS = [
   // ── Normal (label=0) — 6 sub-types ─────────────────────────────────────────
-  { file: path.join(__dirname, 'dataset-events-normal.jsonl'),         label: 0, attack_type: 'normal'   },
-  { file: path.join(__dirname, 'dataset-events-normal-steady.jsonl'),  label: 0, attack_type: 'normal'   },
-  { file: path.join(__dirname, 'dataset-events-normal-busy.jsonl'),    label: 0, attack_type: 'normal'   },
-  { file: path.join(__dirname, 'dataset-events-normal-whale.jsonl'),   label: 0, attack_type: 'normal'   },
-  { file: path.join(__dirname, 'dataset-events-normal-retail.jsonl'),  label: 0, attack_type: 'normal'   },
-  { file: path.join(__dirname, 'dataset-events-normal-offpeak.jsonl'), label: 0, attack_type: 'normal'   },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-normal.jsonl'),         label: 0, attack_type: 'normal'   },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-normal-steady.jsonl'),  label: 0, attack_type: 'normal'   },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-normal-busy.jsonl'),    label: 0, attack_type: 'normal'   },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-normal-whale.jsonl'),   label: 0, attack_type: 'normal'   },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-normal-retail.jsonl'),  label: 0, attack_type: 'normal'   },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-normal-offpeak.jsonl'), label: 0, attack_type: 'normal'   },
 
   // ── Attack (label=1) — 5 types ───────────────────────────────────────────────
-  { file: path.join(__dirname, 'dataset-events-burst.jsonl'),    label: 1, attack_type: 'ddos'     },
-  { file: path.join(__dirname, 'dataset-events-repeated.jsonl'), label: 1, attack_type: 'bot_loop' },
-  { file: path.join(__dirname, 'dataset-events-spike.jsonl'),    label: 1, attack_type: 'burst'    },
-  { file: path.join(__dirname, 'dataset-events-sybil.jsonl'),    label: 1, attack_type: 'sybil'    },
-  { file: path.join(__dirname, 'dataset-events-botloop.jsonl'),  label: 1, attack_type: 'bot_loop' },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-burst.jsonl'),    label: 1, attack_type: 'ddos'     },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-repeated.jsonl'), label: 1, attack_type: 'bot_loop' },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-spike.jsonl'),    label: 1, attack_type: 'burst'    },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-sybil.jsonl'),    label: 1, attack_type: 'sybil'    },
+  { file: path.join(__dirname, '..', 'data', 'dataset-events-botloop.jsonl'),  label: 1, attack_type: 'bot_loop' },
 ]
 
 // Output — goes directly into ml/ so train_svm.py can use it immediately
-const OUTPUT_CSV = path.join(__dirname, '..', 'ml', 'bridge_anomaly_dataset.csv')
+const OUTPUT_CSV = path.join(__dirname, '..', '..', 'ml', 'bridge_anomaly_dataset.csv')
 
 // ── Feature Computation ───────────────────────────────────────────────────────
 // These formulas are a DIRECT PORT of _extractFeatures() in anomaly-detector.js.

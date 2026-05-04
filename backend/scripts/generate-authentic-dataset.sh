@@ -2,7 +2,8 @@
 set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ROOT_DIR="$(dirname "$DIR")"
+BACKEND_DIR="$(dirname "$DIR")"
+ROOT_DIR="$(dirname "$BACKEND_DIR")"
 
 echo "=========================================================="
 echo "  Authentic Dataset Generation (Local Hardhat Node)       "
@@ -24,7 +25,7 @@ echo "[2/6] Deploying contract and funding test accounts..."
 npx hardhat run scripts/setup-dataset-env.js --network localhost
 
 echo "[3/6] Loading local environment variables..."
-cd "$DIR"
+cd "$BACKEND_DIR"
 set -a
 source .env.dataset
 set +a
@@ -34,7 +35,7 @@ echo "[4/6] Generating authentic traffic for ${#MODES[@]} modes via EVM Time-War
 echo "      (Simulating 25 hours of normal traffic and 8 hours of attacks in minutes!)"
 
 # Remove any old JSONL files to ensure fresh dataset
-rm -f dataset-events-*.jsonl
+rm -f "$BACKEND_DIR"/data/dataset-events-*.jsonl
 
 for mode in "${MODES[@]}"; do
   echo ""
@@ -43,14 +44,14 @@ for mode in "${MODES[@]}"; do
   echo "  └─────────────────────────────────────────────"
   
   # Start listener in background
-  node dataset-listener.js "dataset-events-${mode}.jsonl" &
+  node "$BACKEND_DIR"/dataset/dataset-listener.js "$BACKEND_DIR/data/dataset-events-${mode}.jsonl" &
   LISTENER_PID=$!
   
   # Give listener time to connect
   sleep 3
   
   # Run traffic generator (blocking — waits until mode finishes)
-  node dataset-traffic-gen.js "$mode"
+  node "$BACKEND_DIR"/dataset/dataset-traffic-gen.js "$mode"
   
   # Give listener extra time to capture final events from mempool
   sleep 8
@@ -60,8 +61,8 @@ for mode in "${MODES[@]}"; do
   wait $LISTENER_PID 2>/dev/null || true
   
   # Show how many events were captured
-  if [ -f "dataset-events-${mode}.jsonl" ]; then
-    EVENT_COUNT=$(wc -l < "dataset-events-${mode}.jsonl")
+  if [ -f "$BACKEND_DIR/data/dataset-events-${mode}.jsonl" ]; then
+    EVENT_COUNT=$(wc -l < "$BACKEND_DIR/data/dataset-events-${mode}.jsonl")
     echo "  ✓ Captured $EVENT_COUNT events for mode: $mode"
   else
     echo "  ✗ No events captured for mode: $mode"
@@ -71,7 +72,7 @@ done
 
 echo ""
 echo "[5/6] Extracting features into CSV..."
-node dataset-extract.js
+node "$BACKEND_DIR"/dataset/dataset-extract.js
 
 echo ""
 echo "[6/6] Training new ML model..."
@@ -82,7 +83,7 @@ echo ""
 echo "Cleaning up..."
 kill $NODE_PID 2>/dev/null || true
 trap - EXIT
-rm -f "$DIR/.env.dataset"
+rm -f "$BACKEND_DIR/.env.dataset"
 
 echo ""
 echo "=========================================================="
