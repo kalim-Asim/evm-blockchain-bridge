@@ -51,106 +51,46 @@
         <!-- Divider -->
         <div class="border-t border-slate-100 mx-6"></div>
 
-        <!-- Amount -->
-        <div class="px-6 py-5">
-          <label class="block text-sm font-medium text-slate-700 mb-2">Amount</label>
-          <div class="relative">
-            <input
-              type="text"
-              v-model="amount"
-              id="amount"
-              placeholder="0.00"
-              class="w-full px-4 py-3 pr-20 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-300 text-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            />
-            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 select-none">CHSD</span>
-          </div>
-          <p class="text-xs text-slate-400 mt-2">
+        <!-- Balance display -->
+        <div class="px-6 pt-5 pb-3">
+          <p class="text-xs text-slate-400">
             Balance:
             <span class="text-slate-600 font-medium">{{ balanceDisplay }} CHSD</span>
           </p>
         </div>
 
-        <!-- Send 1 action -->
-        <div class="px-6 pb-4">
-          <button
-            type="button"
-            @click="sendOne"
-            :disabled="trxInProgress"
-            class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
-          >
-            <svg v-if="trxInProgress" class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            <span>{{ trxInProgress ? 'Processing…' : 'Send 1 CHSD' }}</span>
-            <svg v-if="!trxInProgress" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Send 5x action -->
-        <div class="px-6 pb-6">
-          <button
-            type="button"
-            @click="sendFive"
-            :disabled="trxInProgress"
-            class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
-          >
-            <span>Send 5× CHSD</span>
-            <svg v-if="!trxInProgress" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Divider -->
-        <div class="border-t border-slate-100 mx-6"></div>
-
-        <!-- Batch send -->
+        <!-- Unified Traffic Injector -->
         <div class="px-6 py-5">
-          <label class="block text-sm font-medium text-slate-700 mb-2">Batch Send</label>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-medium text-slate-700">Bridge Traffic Injector</label>
+            <span class="text-xs font-semibold px-2 py-1 bg-slate-100 text-slate-500 rounded-md">AI-Evaluated</span>
+          </div>
+          <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+            Enter the number of transactions and click Send. The AI decides the outcome.<br/>
+            • <strong class="text-emerald-600">1 – 9 tx:</strong> Sent as <strong>NORMAL</strong> traffic via MetaMask (real on-chain transfers)<br/>
+            • <strong class="text-red-500">10+ tx:</strong> Flagged as <strong>ATTACK</strong> pattern (simulated high-speed DDoS flood)
+          </p>
           <div class="flex gap-2">
             <input
               type="number"
-              v-model.number="batchCount"
+              v-model.number="dynamicCount"
               min="1"
-              placeholder="Count"
+              max="1000"
+              placeholder="Number of transactions"
               class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
             />
             <button
               type="button"
-              @click="sendBatch"
-              class="flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-semibold text-white bg-slate-700 hover:bg-slate-800 transition-colors duration-150"
+              @click="sendDynamicTraffic"
+              :disabled="trxInProgress"
+              class="flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-semibold text-white transition-colors duration-150 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              :class="dynamicCount >= 10 ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'"
             >
-              Send Batch
-            </button>
-          </div>
-        </div>
-
-        <!-- Divider -->
-        <div class="border-t border-slate-100 mx-6"></div>
-
-        <!-- Attack simulations -->
-        <div class="px-6 py-5">
-          <div class="flex items-center justify-between mb-3">
-            <p class="text-sm font-medium text-slate-700">Attack Simulations</p>
-            <span class="text-xs text-slate-400">For anomaly testing</span>
-          </div>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              @click="simulate('flash')"
-              class="flex-1 flex items-center justify-center py-3 px-4 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors duration-150"
-            >
-              Flash Burst
-            </button>
-            <button
-              type="button"
-              @click="simulate('ddos')"
-              class="flex-1 flex items-center justify-center py-3 px-4 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors duration-150"
-            >
-              DDoS Pattern
+              <svg v-if="trxInProgress" class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              {{ dynamicCount >= 10 ? 'Simulate Attack' : 'Send Traffic' }}
             </button>
           </div>
         </div>
@@ -160,14 +100,25 @@
 
         <!-- Activity log -->
         <div class="px-6 py-5">
-          <p class="text-sm font-medium text-slate-700 mb-2">Activity Log</p>
-          <div class="bg-slate-900 rounded-xl p-4 max-h-48 overflow-auto">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-medium text-slate-700">Activity Log</p>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{{ logs.length }} entries</span>
+            </div>
+            <button
+              v-if="logs.length > 0"
+              @click="logs = []"
+              class="text-[10px] px-2 py-1 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-md transition-colors font-medium"
+            >Clear</button>
+          </div>
+          <div class="bg-slate-900 rounded-xl p-5 max-h-[50vh] overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: #475569 transparent;">
             <div
               v-for="(entry, idx) in logs"
               :key="idx"
-              class="text-emerald-400 font-mono text-xs mb-1 leading-relaxed"
+              class="font-mono text-xs mb-1.5 leading-relaxed"
+              :class="entry.includes('ATTACK') || entry.includes('🚨') ? 'text-red-400' : entry.includes('✅') ? 'text-emerald-400' : 'text-slate-300'"
             >{{ entry }}</div>
-            <div v-if="logs.length === 0" class="text-slate-500 font-mono text-xs">No activity yet…</div>
+            <div v-if="logs.length === 0" class="text-slate-500 font-mono text-xs py-8 text-center">Waiting for activity…</div>
           </div>
         </div>
 
@@ -189,15 +140,15 @@ import { ethers } from 'ethers'
 export default defineComponent({
   name: 'SimulatorView',
   setup() {
-    const CHSD_CONTRACT_ADDRESS = '0xC9971B252B980fF08705cF28D554e34347fe2e23'
-    const BRIDGE_WALLET = '0x95d524475F9af10b8745333Dbae73cba7d831272'
+    const CHSD_CONTRACT_ADDRESS = import.meta.env.VITE_ORIGIN_TOKEN_ADDRESS
+    const BRIDGE_WALLET = import.meta.env.VITE_BRIDGE_WALLET
     const ERC20_ABI = [
       'function transfer(address to, uint256 amount) returns (bool)',
       'function balanceOf(address owner) view returns (uint256)'
     ]
 
     const amount = ref('1')
-    const batchCount = ref(10)
+    const dynamicCount = ref(1)
     const logs = ref<string[]>([])
     const account = ref<string | null>(null)
     const balance = ref<string>('-')
@@ -286,11 +237,25 @@ export default defineComponent({
       }
     }
 
-    const sendBatch = async () => {
-      const count = Number(batchCount.value) || 1
-      addLog(`Sending batch of ${count} transfers`)
-      for (let i = 0; i < count; i++) {
-        sendTransfer(ethers.utils.parseUnits('1', 18)).catch(() => {})
+    const sendDynamicTraffic = async () => {
+      const count = Number(dynamicCount.value) || 1
+      if (count < 10) {
+        // Normal traffic — send real on-chain transactions via MetaMask
+        trxInProgress.value = true
+        try {
+          for (let i = 0; i < count; i++) {
+            addLog(`Sending normal transfer ${i + 1}/${count} via MetaMask...`)
+            await sendTransfer(ethers.utils.parseUnits('1', 18))
+            if (i < count - 1) await new Promise(r => setTimeout(r, 3000))
+          }
+        } catch (err: any) {
+          addLog('Transfer failed: ' + (err.message || err))
+        } finally {
+          trxInProgress.value = false
+        }
+      } else {
+        // Attack pattern — simulate high-speed flood directly to backend
+        simulate('ddos', count)
       }
     }
 
@@ -306,8 +271,8 @@ export default defineComponent({
       }
     }
 
-    const simulate = async (type: string) => {
-      const count = type === 'flash' ? 50 : 30
+    const simulate = async (type: string, overrideCount?: number) => {
+      const count = overrideCount || (type === 'flash' ? 50 : 30)
       addLog(`Initiating ${type.toUpperCase()} pattern via backend (${count} tx)...`)
       
       // Visual fireworks in the activity log
@@ -347,9 +312,9 @@ export default defineComponent({
     })
 
     return {
-      amount, batchCount, logs, account, balance,
+      dynamicCount, logs, account, balance,
       accountShort, balanceDisplay, trxInProgress,
-      connectWallet, sendOne, sendFive, sendBatch, simulate,
+      connectWallet, sendDynamicTraffic,
     }
   }
 })

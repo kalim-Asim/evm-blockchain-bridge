@@ -238,10 +238,12 @@ const classifyTransaction = async (event) => {
 
   const snapshot = _window
 
-  // Skip inference for sparse windows — you can't detect an attack pattern
-  // from 1–2 transactions, and the degenerate features (entropy=0, etc.)
-  // cause false positives.  The model was trained on windows with ≥ 3 events.
-  if (snapshot.length < 3) {
+  // Skip inference for sparse windows — a real user might send up to ~9
+  // transactions in a 60-second window, and from the same wallet they will
+  // always produce attack-like features (same_pair_ratio=1, unique_senders=1).
+  // We need at least 10 tx before the statistical features become meaningful
+  // enough to distinguish real attacks from normal usage.
+  if (snapshot.length < 10) {
     console.log(
       `✅ Normal traffic (window too small to classify: ${snapshot.length} tx)`
     )
